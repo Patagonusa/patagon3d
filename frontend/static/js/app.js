@@ -1,7 +1,192 @@
 /**
  * Patagon3d - AI Renovation Visualizer
  * Real photo upload, AI measurement analysis, and image-to-image renovation
+ * Bilingual: English / Spanish
  */
+
+// ============================================================================
+// TRANSLATIONS
+// ============================================================================
+
+const translations = {
+    en: {
+        // Header
+        tagline: "AI Renovation Visualizer",
+
+        // Step 1
+        step1_title: "Upload Room Photo",
+        step1_instruction: "Take a photo of your kitchen, bathroom, or room for AI analysis and renovation visualization.",
+        upload_prompt: "Tap to take photo or select from gallery",
+        btn_analyze: "Analyze Measurements",
+        btn_skip_renovation: "Skip to Renovation",
+        uploading: "Uploading...",
+        processing: "Processing...",
+
+        // Step 2
+        step2_title: "AI Measurements",
+        analyzing_room: "AI is analyzing your room...",
+        estimated_measurements: "Estimated Measurements",
+        room_dimensions: "Room Dimensions",
+        surface_areas: "Surface Areas",
+        fixtures_identified: "Fixtures Identified",
+        btn_continue_renovation: "Continue to AI Renovation",
+        length: "Length",
+        width: "Width",
+        height: "Height",
+        total_area: "Total Area",
+        countertop_linear: "Countertop (linear)",
+        countertop_area: "Countertop (area)",
+        upper_cabinets: "Upper Cabinets",
+        lower_cabinets: "Lower Cabinets",
+        backsplash_area: "Backsplash",
+        floor_area: "Floor Area",
+        confidence: "Confidence",
+
+        // Step 3
+        step3_title: "AI Renovation",
+        your_room: "Your Room",
+        what_to_change: "What do you want to change?",
+        cabinets: "Cabinets",
+        countertops: "Countertops",
+        backsplash: "Backsplash",
+        flooring: "Flooring",
+        appliances: "Appliances",
+        style: "Style",
+        modern: "Modern",
+        farmhouse: "Farmhouse",
+        transitional: "Transitional",
+        contemporary: "Contemporary",
+        cabinet_color: "Cabinet Color",
+        countertop_material: "Countertop Material",
+        backsplash_style: "Backsplash Style",
+        flooring_type: "Flooring Type",
+        appliance_finish: "Appliance Finish",
+        white_quartz: "White Quartz",
+        black_granite: "Black Granite",
+        carrara_marble: "Carrara Marble",
+        butcher_block: "Butcher Block",
+        white_subway: "White Subway",
+        herringbone: "Herringbone",
+        mosaic: "Mosaic",
+        marble_slab: "Marble Slab",
+        oak_hardwood: "Oak Hardwood",
+        lvp_gray: "LVP Gray",
+        tile: "Tile",
+        slate: "Slate",
+        stainless_steel: "Stainless Steel",
+        black_stainless: "Black Stainless",
+        white: "White",
+        panel_ready: "Panel Ready",
+        btn_generate: "Generate AI Renovation",
+        ai_proposal: "AI Renovation Proposal",
+        transforming_room: "AI is transforming your room...",
+        btn_download: "Download",
+        btn_try_another: "Try Another",
+
+        // Comparison
+        before_after: "Before & After",
+        before: "Before",
+        after: "After",
+        btn_back: "Back to Options",
+        btn_new_photo: "New Photo",
+
+        // Errors
+        upload_failed: "Upload failed",
+        analysis_failed: "Analysis failed",
+        renovation_failed: "Renovation failed",
+        timeout: "Request timed out. Please try again."
+    },
+    es: {
+        // Header
+        tagline: "Visualizador de Renovaciones con IA",
+
+        // Step 1
+        step1_title: "Subir Foto del Cuarto",
+        step1_instruction: "Toma una foto de tu cocina, baño o habitación para análisis de IA y visualización de renovación.",
+        upload_prompt: "Toca para tomar foto o seleccionar de galería",
+        btn_analyze: "Analizar Medidas",
+        btn_skip_renovation: "Ir a Renovación",
+        uploading: "Subiendo...",
+        processing: "Procesando...",
+
+        // Step 2
+        step2_title: "Medidas con IA",
+        analyzing_room: "La IA está analizando tu cuarto...",
+        estimated_measurements: "Medidas Estimadas",
+        room_dimensions: "Dimensiones del Cuarto",
+        surface_areas: "Áreas de Superficie",
+        fixtures_identified: "Elementos Identificados",
+        btn_continue_renovation: "Continuar a Renovación",
+        length: "Largo",
+        width: "Ancho",
+        height: "Alto",
+        total_area: "Área Total",
+        countertop_linear: "Encimera (lineal)",
+        countertop_area: "Encimera (área)",
+        upper_cabinets: "Gabinetes Superiores",
+        lower_cabinets: "Gabinetes Inferiores",
+        backsplash_area: "Salpicadero",
+        floor_area: "Área del Piso",
+        confidence: "Confianza",
+
+        // Step 3
+        step3_title: "Renovación con IA",
+        your_room: "Tu Cuarto",
+        what_to_change: "¿Qué quieres cambiar?",
+        cabinets: "Gabinetes",
+        countertops: "Encimeras",
+        backsplash: "Salpicadero",
+        flooring: "Piso",
+        appliances: "Electrodomésticos",
+        style: "Estilo",
+        modern: "Moderno",
+        farmhouse: "Rústico",
+        transitional: "Transicional",
+        contemporary: "Contemporáneo",
+        cabinet_color: "Color de Gabinetes",
+        countertop_material: "Material de Encimera",
+        backsplash_style: "Estilo de Salpicadero",
+        flooring_type: "Tipo de Piso",
+        appliance_finish: "Acabado de Electrodomésticos",
+        white_quartz: "Cuarzo Blanco",
+        black_granite: "Granito Negro",
+        carrara_marble: "Mármol Carrara",
+        butcher_block: "Bloque de Carnicero",
+        white_subway: "Subway Blanco",
+        herringbone: "Espiga",
+        mosaic: "Mosaico",
+        marble_slab: "Losa de Mármol",
+        oak_hardwood: "Roble",
+        lvp_gray: "Vinilo Gris",
+        tile: "Azulejo",
+        slate: "Pizarra",
+        stainless_steel: "Acero Inoxidable",
+        black_stainless: "Acero Negro",
+        white: "Blanco",
+        panel_ready: "Panel Integrado",
+        btn_generate: "Generar Renovación con IA",
+        ai_proposal: "Propuesta de Renovación",
+        transforming_room: "La IA está transformando tu cuarto...",
+        btn_download: "Descargar",
+        btn_try_another: "Probar Otro",
+
+        // Comparison
+        before_after: "Antes y Después",
+        before: "Antes",
+        after: "Después",
+        btn_back: "Volver a Opciones",
+        btn_new_photo: "Nueva Foto",
+
+        // Errors
+        upload_failed: "Error al subir",
+        analysis_failed: "Error en análisis",
+        renovation_failed: "Error en renovación",
+        timeout: "Tiempo agotado. Intenta de nuevo."
+    }
+};
+
+// Current language
+let currentLang = localStorage.getItem('patagon3d_lang') || 'en';
 
 // State
 let currentImageUrl = null;
@@ -19,6 +204,7 @@ const comparisonSection = document.getElementById('comparison-section');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    initializeLanguage();
     initializeUpload();
     initializeElementButtons();
     initializeStyleButtons();
@@ -26,6 +212,53 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMaterialButtons();
     initializeActions();
 });
+
+// ============================================================================
+// LANGUAGE SYSTEM
+// ============================================================================
+
+function initializeLanguage() {
+    // Set initial language
+    applyTranslations(currentLang);
+    updateLanguageButtons();
+
+    // Language button listeners
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lang = btn.dataset.lang;
+            setLanguage(lang);
+        });
+    });
+}
+
+function setLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('patagon3d_lang', lang);
+    applyTranslations(lang);
+    updateLanguageButtons();
+}
+
+function updateLanguageButtons() {
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === currentLang);
+    });
+}
+
+function applyTranslations(lang) {
+    const t = translations[lang];
+    if (!t) return;
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (t[key]) {
+            el.textContent = t[key];
+        }
+    });
+}
+
+function t(key) {
+    return translations[currentLang]?.[key] || translations.en[key] || key;
+}
 
 // ============================================================================
 // IMAGE UPLOAD
