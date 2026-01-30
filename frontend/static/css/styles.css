@@ -75,145 +75,92 @@ body::before {
     min-height: 100vh;
 }
 
-/* Header */
+/* Header - Simple Clean Style */
 .header {
-    background: linear-gradient(135deg, rgba(26, 54, 93, 0.95) 0%, rgba(12, 25, 41, 0.98) 100%);
-    padding: 16px 20px;
-    text-align: center;
-    border-bottom: 2px solid var(--primary-light);
-    backdrop-filter: blur(20px);
+    background: linear-gradient(135deg, #0A1628 0%, #1E3A5F 100%);
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     position: sticky;
     top: 0;
     z-index: 100;
 }
 
-/* Header Top - Logo and Controls */
-.header-top {
+.header-brand {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-}
-
-.header-controls {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
     gap: 12px;
 }
 
-/* Language Selector - Bigger Buttons */
-.language-selector {
+.header-logo {
+    height: 45px;
+    width: auto;
+    border-radius: 6px;
+}
+
+.header h1 {
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: white;
+}
+
+.header-actions {
     display: flex;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    padding: 5px;
+    align-items: center;
+    gap: 12px;
 }
 
-.lang-btn {
-    padding: 10px 18px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    min-width: 50px;
-    text-align: center;
+.user-email {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    color: #93C5FD;
 }
 
-.lang-btn:hover {
-    color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.15);
-}
-
-.lang-btn.active {
-    background: var(--gradient-ocean);
-    color: white;
-    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
-}
-
-/* Admin Button */
-.admin-btn {
+.header-btn {
     padding: 8px 16px;
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    border-radius: 8px;
-    color: white;
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s ease;
+    background: transparent;
+    border: 2px solid #60A5FA;
+    color: #60A5FA;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.header-btn:hover {
+    background: #60A5FA;
+    color: #0A1628;
+}
+
+/* Language buttons */
+.lang-btn.active {
+    background: #60A5FA;
+    color: #0A1628;
+}
+
+/* Admin button - pink/purple */
+.admin-btn {
+    border-color: #f093fb !important;
+    color: #f093fb !important;
 }
 
 .admin-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(240, 147, 251, 0.4);
+    background: #f093fb !important;
+    color: #0A1628 !important;
 }
 
-/* User Info */
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-}
-
-.user-icon {
-    font-size: 16px;
-}
-
-.user-name {
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-}
-
+/* Logout button - red */
 .logout-btn {
-    padding: 6px 12px;
-    background: rgba(239, 68, 68, 0.8);
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    border-color: #ef4444 !important;
+    color: #ef4444 !important;
 }
 
 .logout-btn:hover {
-    background: rgba(239, 68, 68, 1);
-}
-
-.logo-image {
-    height: 50px;
-    width: auto;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-}
-
-.app-title {
-    font-size: 24px;
-    font-weight: 700;
-    background: var(--gradient-ocean);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.tagline, .company {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 2px;
+    background: #ef4444 !important;
+    color: white !important;
 }
 
 /* Main Content */
@@ -936,53 +883,40 @@ body::before {
 }
 
 /* Mobile Optimizations */
-@media (max-width: 480px) {
+@media (max-width: 600px) {
     .header {
+        flex-direction: column;
+        gap: 12px;
         padding: 12px 16px;
     }
 
-    .header-top {
-        flex-wrap: wrap;
-        gap: 10px;
+    .header-brand {
+        width: 100%;
+        justify-content: center;
     }
 
-    .header-controls {
+    .header-actions {
+        width: 100%;
+        justify-content: center;
         flex-wrap: wrap;
         gap: 8px;
-        justify-content: flex-end;
     }
 
-    .lang-btn {
-        padding: 8px 12px;
-        font-size: 12px;
-        min-width: 40px;
-    }
-
-    .admin-btn {
+    .header-btn {
         padding: 6px 12px;
-        font-size: 11px;
+        font-size: 0.8rem;
     }
 
-    .user-info {
-        padding: 4px 8px;
-        gap: 6px;
+    .user-email {
+        display: none;
     }
 
-    .user-name {
-        font-size: 12px;
-    }
-
-    .logout-btn {
-        padding: 4px 8px;
-        font-size: 11px;
-    }
-
-    .logo-image {
+    .header-logo {
         height: 40px;
     }
 
-    .app-title {
-        font-size: 20px;
+    .header h1 {
+        font-size: 1.1rem;
     }
 
     .main-content {

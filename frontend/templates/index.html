@@ -11,29 +11,17 @@
     <div class="app-container">
         <!-- Header -->
         <header class="header">
-            <div class="header-top">
-                <div class="logo">
-                    <img src="/static/images/logo.png" alt="Patagon Consulting" class="logo-image">
-                </div>
-                <div class="header-controls">
-                    <!-- Language Selector -->
-                    <div class="language-selector">
-                        <button type="button" class="lang-btn active" data-lang="en" id="lang-en">EN</button>
-                        <button type="button" class="lang-btn" data-lang="es" id="lang-es">ES</button>
-                    </div>
-                    <!-- Admin Link (visible to admins) -->
-                    <a href="/admin" class="admin-btn" id="admin-link" style="display: none;">Admin</a>
-                    <!-- User Info -->
-                    <div class="user-info">
-                        <span class="user-icon">👤</span>
-                        <span class="user-name" id="user-name">User</span>
-                        <button type="button" class="logout-btn" id="logout-btn">Logout</button>
-                    </div>
-                </div>
+            <div class="header-brand">
+                <img src="/static/images/logo.png" alt="Patagon Consulting" class="header-logo">
+                <h1>Patagon3d</h1>
             </div>
-            <h1 class="app-title">Patagon3d</h1>
-            <p class="tagline" data-i18n="tagline">AI Renovation Visualizer</p>
-            <p class="company">Hello Projects Pro</p>
+            <div class="header-actions">
+                <button type="button" class="header-btn lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
+                <button type="button" class="header-btn lang-btn" id="lang-es" onclick="setLanguage('es')">ES</button>
+                <button type="button" class="header-btn admin-btn" id="admin-link" style="display:none;" onclick="window.location.href='/admin'">Admin</button>
+                <span id="user-email" class="user-email"></span>
+                <button type="button" class="header-btn logout-btn" id="logout-btn" onclick="logout()">Logout</button>
+            </div>
         </header>
 
         <!-- Main Content -->

@@ -188,36 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeLanguage() {
     applyTranslations(currentLang);
     updateLanguageButtons();
-
-    // Language button click handlers
-    const langEn = document.getElementById('lang-en');
-    const langEs = document.getElementById('lang-es');
-
-    if (langEn) {
-        langEn.onclick = function(e) {
-            e.preventDefault();
-            setLanguage('en');
-        };
-    }
-
-    if (langEs) {
-        langEs.onclick = function(e) {
-            e.preventDefault();
-            setLanguage('es');
-        };
-    }
-
-    // Fallback for querySelectorAll
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const lang = this.getAttribute('data-lang');
-            if (lang) {
-                setLanguage(lang);
-            }
-        });
-    });
 }
 
 function setLanguage(lang) {
@@ -228,13 +198,24 @@ function setLanguage(lang) {
 }
 
 function updateLanguageButtons() {
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        if (btn.dataset.lang === currentLang) {
-            btn.classList.add('active');
+    const langEn = document.getElementById('lang-en');
+    const langEs = document.getElementById('lang-es');
+
+    if (langEn) {
+        if (currentLang === 'en') {
+            langEn.classList.add('active');
         } else {
-            btn.classList.remove('active');
+            langEn.classList.remove('active');
         }
-    });
+    }
+
+    if (langEs) {
+        if (currentLang === 'es') {
+            langEs.classList.add('active');
+        } else {
+            langEs.classList.remove('active');
+        }
+    }
 }
 
 function applyTranslations(lang) {
@@ -262,12 +243,17 @@ async function initializeUser() {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
             currentUser = await response.json();
-            document.getElementById('user-name').textContent = currentUser.name;
 
-            // Show admin link only for admins
+            // Show user email
+            const userEmail = document.getElementById('user-email');
+            if (userEmail) {
+                userEmail.textContent = currentUser.email;
+            }
+
+            // Show admin button only for admins
             const adminLink = document.getElementById('admin-link');
             if (adminLink) {
-                adminLink.style.display = currentUser.role === 'admin' ? 'block' : 'none';
+                adminLink.style.display = currentUser.role === 'admin' ? 'inline-block' : 'none';
             }
         }
     } catch (err) {
@@ -276,14 +262,8 @@ async function initializeUser() {
 }
 
 function initializeUserMenu() {
-    // Logout button handler
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            logout();
-        });
-    }
+    // Logout is now handled by onclick in HTML
+    // This function kept for compatibility
 }
 
 async function logout() {
