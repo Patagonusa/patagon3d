@@ -1,6 +1,6 @@
 /**
  * Patagon3d - 3D Scanning & AI Renovation System
- * Frontend Application
+ * Frontend Application with Advanced Measurement Tools
  */
 
 class Patagon3d {
@@ -12,9 +12,21 @@ class Patagon3d {
         this.renderer = null;
         this.controls = null;
         this.model = null;
-        this.measureMode = false;
-        this.measurePoints = [];
         this.selectedElements = [];
+
+        // Measurement system
+        this.measureMode = null; // null, 'distance', 'area', 'height'
+        this.measurePoints = [];
+        this.measurements = [];
+        this.measurementObjects = []; // Three.js objects for visualization
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+        this.tempLine = null;
+        this.pointMarkers = [];
+
+        // Scale factor (meters to feet) - can be calibrated
+        this.scaleFactor = 3.28084; // 1 meter = 3.28084 feet
+        this.modelScale = 1; // Will be set when model loads
 
         this.init();
     }
@@ -23,6 +35,7 @@ class Patagon3d {
         this.bindEvents();
         this.loadJobsHistory();
         this.initThreeJS();
+        this.loadSavedMeasurements();
     }
 
     bindEvents() {
@@ -36,8 +49,15 @@ class Patagon3d {
 
         // Viewer controls
         document.getElementById('rotate-btn')?.addEventListener('click', () => this.toggleAutoRotate());
-        document.getElementById('measure-btn')?.addEventListener('click', () => this.toggleMeasureMode());
         document.getElementById('reset-btn')?.addEventListener('click', () => this.resetView());
+
+        // Measurement mode buttons
+        document.getElementById('measure-distance-btn')?.addEventListener('click', () => this.setMeasureMode('distance'));
+        document.getElementById('measure-area-btn')?.addEventListener('click', () => this.setMeasureMode('area'));
+        document.getElementById('measure-height-btn')?.addEventListener('click', () => this.setMeasureMode('height'));
+        document.getElementById('clear-measurements-btn')?.addEventListener('click', () => this.clearMeasurements());
+        document.getElementById('export-measurements-btn')?.addEventListener('click', () => this.exportMeasurements());
+        document.getElementById('calibrate-btn')?.addEventListener('click', () => this.showCalibrationModal());
 
         // Continue to design
         document.getElementById('continue-to-design')?.addEventListener('click', () => this.showSection('design-section'));
@@ -54,6 +74,10 @@ class Patagon3d {
 
         // Generate design
         document.getElementById('generate-design')?.addEventListener('click', () => this.generateDesign());
+
+        // Calibration modal
+        document.getElementById('apply-calibration')?.addEventListener('click', () => this.applyCalibration());
+        document.getElementById('cancel-calibration')?.addEventListener('click', () => this.hideCalibrationModal());
     }
 
     handleVideoSelect(event) {
@@ -86,7 +110,6 @@ class Patagon3d {
         formData.append('file', this.selectedVideoFile);
 
         try {
-            // Simulate upload progress
             let progress = 0;
             const progressInterval = setInterval(() => {
                 progress += Math.random() * 15;
@@ -111,8 +134,6 @@ class Patagon3d {
             progressText.textContent = 'Processing 3D model...';
 
             this.showToast('Video uploaded! Creating 3D model...', 'success');
-
-            // Start polling for job status
             this.pollJobStatus();
 
         } catch (error) {
@@ -140,7 +161,6 @@ class Patagon3d {
 
                 this.showToast('3D Model created successfully!', 'success');
 
-                // Load the 3D model
                 setTimeout(() => {
                     this.showSection('model-section');
                     this.loadModel(job.model_url);
@@ -152,12 +172,10 @@ class Patagon3d {
                 document.getElementById('upload-btn').disabled = false;
 
             } else {
-                // Still processing
                 progressText.textContent = `Processing... (${job.status})`;
                 setTimeout(() => this.pollJobStatus(), 3000);
             }
 
-            // Update jobs history
             this.loadJobsHistory();
 
         } catch (error) {
@@ -172,7 +190,7 @@ class Patagon3d {
 
         // Scene
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x1e293b);
+        this.scene.background = new THREE.Color(0x1a365d);
 
         // Camera
         this.camera = new THREE.PerspectiveCamera(
@@ -181,7 +199,7 @@ class Patagon3d {
             0.1,
             1000
         );
-        this.camera.position.set(0, 2, 5);
+        this.camera.position.set(0, 3, 6);
 
         // Renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -202,9 +220,13 @@ class Patagon3d {
         directionalLight.position.set(5, 10, 5);
         this.scene.add(directionalLight);
 
-        // Grid helper
-        const gridHelper = new THREE.GridHelper(10, 10);
+        // Grid helper (1 unit = 1 foot for reference)
+        const gridHelper = new THREE.GridHelper(20, 20, 0x4299e1, 0x2b6cb0);
         this.scene.add(gridHelper);
+
+        // Click handler for measurements
+        this.renderer.domElement.addEventListener('click', (e) => this.onModelClick(e));
+        this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
 
         // Animation loop
         this.animate();
@@ -230,7 +252,6 @@ class Patagon3d {
 
     loadModel(url) {
         if (!url) {
-            // Demo: create a simple room model
             this.createDemoRoom();
             return;
         }
@@ -250,11 +271,11 @@ class Patagon3d {
                 const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
                 const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = 3 / maxDim;
-                this.model.scale.multiplyScalar(scale);
-                this.model.position.sub(center.multiplyScalar(scale));
+                this.modelScale = 5 / maxDim;
+                this.model.scale.multiplyScalar(this.modelScale);
+                this.model.position.sub(center.multiplyScalar(this.modelScale));
 
-                this.showToast('3D Model loaded!', 'success');
+                this.showToast('3D Model loaded! Use measurement tools to measure.', 'success');
             },
             (progress) => {
                 console.log(`Loading: ${(progress.loaded / progress.total * 100).toFixed(0)}%`);
@@ -267,49 +288,601 @@ class Patagon3d {
     }
 
     createDemoRoom() {
-        // Create a simple demo room for testing
+        // Create a realistic demo kitchen for testing measurements
+        // Scale: 1 unit = 1 foot
         const roomGroup = new THREE.Group();
 
-        // Floor
-        const floorGeometry = new THREE.PlaneGeometry(4, 4);
-        const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+        // Floor (12ft x 10ft kitchen)
+        const floorGeometry = new THREE.PlaneGeometry(12, 10);
+        const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, side: THREE.DoubleSide });
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = 0;
+        floor.userData.type = 'floor';
+        floor.userData.label = 'Kitchen Floor';
         roomGroup.add(floor);
 
-        // Walls
-        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xf5f5dc });
+        // Walls (8ft high)
+        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xF5F5DC, side: THREE.DoubleSide });
 
         // Back wall
-        const backWall = new THREE.Mesh(new THREE.PlaneGeometry(4, 2.5), wallMaterial);
-        backWall.position.set(0, 1.25, -2);
+        const backWall = new THREE.Mesh(new THREE.PlaneGeometry(12, 8), wallMaterial);
+        backWall.position.set(0, 4, -5);
+        backWall.userData.type = 'wall';
         roomGroup.add(backWall);
 
         // Left wall
-        const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(4, 2.5), wallMaterial);
+        const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 8), wallMaterial);
         leftWall.rotation.y = Math.PI / 2;
-        leftWall.position.set(-2, 1.25, 0);
+        leftWall.position.set(-6, 4, 0);
+        leftWall.userData.type = 'wall';
         roomGroup.add(leftWall);
 
-        // Cabinets (simple boxes)
-        const cabinetMaterial = new THREE.MeshStandardMaterial({ color: 0x654321 });
-        const cabinet = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.6), cabinetMaterial);
-        cabinet.position.set(-1.5, 0.45, -1.5);
-        roomGroup.add(cabinet);
+        // Right wall
+        const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 8), wallMaterial);
+        rightWall.rotation.y = -Math.PI / 2;
+        rightWall.position.set(6, 4, 0);
+        rightWall.userData.type = 'wall';
+        roomGroup.add(rightWall);
 
-        // Counter
+        // Base cabinets (2ft deep, 3ft high, 8ft long)
+        const cabinetMaterial = new THREE.MeshStandardMaterial({ color: 0x654321 });
+        const baseCabinet = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 2), cabinetMaterial);
+        baseCabinet.position.set(-1, 1.5, -4);
+        baseCabinet.userData.type = 'cabinet';
+        baseCabinet.userData.label = 'Base Cabinets';
+        roomGroup.add(baseCabinet);
+
+        // Countertop (2.1ft deep, 8.5ft long, 1.5 inches thick)
         const counterMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
-        const counter = new THREE.Mesh(new THREE.BoxGeometry(3, 0.05, 0.7), counterMaterial);
-        counter.position.set(-0.5, 0.92, -1.5);
-        roomGroup.add(counter);
+        const countertop = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.125, 2.1), counterMaterial);
+        countertop.position.set(-1, 3.0625, -4);
+        countertop.userData.type = 'countertop';
+        countertop.userData.label = 'Kitchen Countertop';
+        roomGroup.add(countertop);
+
+        // Island (4ft x 3ft)
+        const islandBase = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 3), cabinetMaterial);
+        islandBase.position.set(0, 1.5, 1);
+        islandBase.userData.type = 'island';
+        islandBase.userData.label = 'Kitchen Island';
+        roomGroup.add(islandBase);
+
+        // Island countertop
+        const islandTop = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.125, 3.5), counterMaterial);
+        islandTop.position.set(0, 3.0625, 1);
+        islandTop.userData.type = 'countertop';
+        islandTop.userData.label = 'Island Countertop';
+        roomGroup.add(islandTop);
+
+        // Upper cabinets (1ft deep, 2.5ft high, 8ft long, mounted at 4.5ft)
+        const upperCabinet = new THREE.Mesh(new THREE.BoxGeometry(8, 2.5, 1), cabinetMaterial);
+        upperCabinet.position.set(-1, 5.75, -4.5);
+        upperCabinet.userData.type = 'cabinet';
+        upperCabinet.userData.label = 'Upper Cabinets';
+        roomGroup.add(upperCabinet);
 
         if (this.model) {
             this.scene.remove(this.model);
         }
         this.model = roomGroup;
+        this.modelScale = 1; // Demo room is already in feet
         this.scene.add(roomGroup);
+
+        this.showToast('Demo kitchen loaded (12ft x 10ft). Tap to measure!', 'success');
     }
+
+    // ==================== MEASUREMENT SYSTEM ====================
+
+    setMeasureMode(mode) {
+        // Toggle off if same mode
+        if (this.measureMode === mode) {
+            this.measureMode = null;
+            this.clearTempMeasurement();
+            this.updateMeasureModeUI(null);
+            this.showToast('Measurement mode off', 'success');
+            return;
+        }
+
+        this.measureMode = mode;
+        this.measurePoints = [];
+        this.clearTempMeasurement();
+        this.updateMeasureModeUI(mode);
+
+        const instructions = {
+            'distance': 'Tap 2 points to measure distance',
+            'area': 'Tap corners to measure area (tap first point again to close)',
+            'height': 'Tap floor then ceiling/top to measure height'
+        };
+
+        this.showToast(instructions[mode], 'success');
+    }
+
+    updateMeasureModeUI(mode) {
+        document.querySelectorAll('.measure-mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        if (mode) {
+            document.getElementById(`measure-${mode}-btn`)?.classList.add('active');
+        }
+
+        const instruction = document.getElementById('measure-instruction');
+        if (instruction) {
+            const texts = {
+                null: 'Select a measurement tool above',
+                'distance': 'Tap 2 points to measure linear distance',
+                'area': 'Tap corners clockwise, tap first point to close shape',
+                'height': 'Tap bottom point, then top point'
+            };
+            instruction.textContent = texts[mode] || texts[null];
+        }
+    }
+
+    onModelClick(event) {
+        if (!this.measureMode) return;
+
+        const container = this.renderer.domElement;
+        const rect = container.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+
+        const intersects = this.raycaster.intersectObject(this.model, true);
+
+        if (intersects.length > 0) {
+            const point = intersects[0].point.clone();
+            this.addMeasurePoint(point, intersects[0].object);
+        }
+    }
+
+    onMouseMove(event) {
+        if (!this.measureMode || this.measurePoints.length === 0) return;
+
+        const container = this.renderer.domElement;
+        const rect = container.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster.intersectObject(this.model, true);
+
+        if (intersects.length > 0) {
+            this.updateTempLine(intersects[0].point);
+        }
+    }
+
+    addMeasurePoint(point, object) {
+        // Add point marker
+        const marker = this.createPointMarker(point);
+        this.pointMarkers.push(marker);
+        this.scene.add(marker);
+
+        this.measurePoints.push({
+            position: point,
+            object: object
+        });
+
+        if (this.measureMode === 'distance') {
+            if (this.measurePoints.length === 2) {
+                this.completeMeasurement();
+            }
+        } else if (this.measureMode === 'height') {
+            if (this.measurePoints.length === 2) {
+                this.completeMeasurement();
+            }
+        } else if (this.measureMode === 'area') {
+            // Check if clicking near first point to close polygon
+            if (this.measurePoints.length > 2) {
+                const firstPoint = this.measurePoints[0].position;
+                const distance = point.distanceTo(firstPoint);
+                if (distance < 0.3) { // Close threshold
+                    this.measurePoints.pop(); // Remove duplicate point
+                    this.scene.remove(this.pointMarkers.pop());
+                    this.completeMeasurement();
+                    return;
+                }
+            }
+            this.updateAreaPreview();
+        }
+    }
+
+    createPointMarker(position) {
+        const geometry = new THREE.SphereGeometry(0.1, 16, 16);
+        const material = new THREE.MeshBasicMaterial({ color: 0x4299e1 });
+        const sphere = new THREE.Mesh(geometry, material);
+        sphere.position.copy(position);
+        return sphere;
+    }
+
+    updateTempLine(currentPoint) {
+        if (this.tempLine) {
+            this.scene.remove(this.tempLine);
+        }
+
+        if (this.measurePoints.length === 0) return;
+
+        const lastPoint = this.measurePoints[this.measurePoints.length - 1].position;
+
+        const geometry = new THREE.BufferGeometry().setFromPoints([lastPoint, currentPoint]);
+        const material = new THREE.LineBasicMaterial({ color: 0x63b3ed, linewidth: 2 });
+        this.tempLine = new THREE.Line(geometry, material);
+        this.scene.add(this.tempLine);
+    }
+
+    updateAreaPreview() {
+        // Draw lines between all points
+        if (this.measurePoints.length < 2) return;
+
+        // Clear previous preview lines
+        this.clearTempMeasurement();
+
+        const points = this.measurePoints.map(p => p.position);
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const geometry = new THREE.BufferGeometry().setFromPoints([points[i], points[i + 1]]);
+            const material = new THREE.LineBasicMaterial({ color: 0x4299e1, linewidth: 2 });
+            const line = new THREE.Line(geometry, material);
+            line.userData.temp = true;
+            this.scene.add(line);
+        }
+    }
+
+    clearTempMeasurement() {
+        if (this.tempLine) {
+            this.scene.remove(this.tempLine);
+            this.tempLine = null;
+        }
+
+        // Remove temp lines
+        this.scene.children.filter(c => c.userData?.temp).forEach(c => this.scene.remove(c));
+
+        // Remove point markers
+        this.pointMarkers.forEach(m => this.scene.remove(m));
+        this.pointMarkers = [];
+    }
+
+    completeMeasurement() {
+        let measurement = null;
+
+        if (this.measureMode === 'distance' || this.measureMode === 'height') {
+            const p1 = this.measurePoints[0].position;
+            const p2 = this.measurePoints[1].position;
+
+            let distance;
+            if (this.measureMode === 'height') {
+                // Only measure vertical distance
+                distance = Math.abs(p2.y - p1.y);
+            } else {
+                distance = p1.distanceTo(p2);
+            }
+
+            // Convert to feet (model units may vary)
+            const distanceFeet = distance * this.scaleFactor / this.modelScale;
+            const feet = Math.floor(distanceFeet);
+            const inches = Math.round((distanceFeet - feet) * 12);
+
+            measurement = {
+                id: Date.now(),
+                type: this.measureMode,
+                points: this.measurePoints.map(p => ({ x: p.position.x, y: p.position.y, z: p.position.z })),
+                value: distanceFeet,
+                displayValue: `${feet}' ${inches}"`,
+                label: this.measureMode === 'height' ? 'Height' : 'Distance',
+                timestamp: new Date().toISOString()
+            };
+
+            // Create permanent line
+            this.createMeasurementLine(p1, p2, measurement.displayValue);
+
+        } else if (this.measureMode === 'area') {
+            const points = this.measurePoints.map(p => p.position);
+            const area = this.calculatePolygonArea(points);
+
+            // Convert to square feet
+            const areaSqFt = area * Math.pow(this.scaleFactor / this.modelScale, 2);
+
+            measurement = {
+                id: Date.now(),
+                type: 'area',
+                points: this.measurePoints.map(p => ({ x: p.position.x, y: p.position.y, z: p.position.z })),
+                value: areaSqFt,
+                displayValue: `${areaSqFt.toFixed(1)} sq ft`,
+                label: 'Area',
+                timestamp: new Date().toISOString()
+            };
+
+            // Create permanent polygon outline
+            this.createAreaVisualization(points, measurement.displayValue);
+        }
+
+        if (measurement) {
+            this.measurements.push(measurement);
+            this.updateMeasurementsList();
+            this.saveMeasurements();
+            this.showToast(`Measured: ${measurement.displayValue}`, 'success');
+        }
+
+        // Reset for next measurement
+        this.clearTempMeasurement();
+        this.measurePoints = [];
+    }
+
+    calculatePolygonArea(points) {
+        // Project to XZ plane (floor) and calculate area using Shoelace formula
+        if (points.length < 3) return 0;
+
+        let area = 0;
+        const n = points.length;
+
+        for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            area += points[i].x * points[j].z;
+            area -= points[j].x * points[i].z;
+        }
+
+        return Math.abs(area) / 2;
+    }
+
+    createMeasurementLine(p1, p2, label) {
+        // Create line
+        const geometry = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+        const material = new THREE.LineBasicMaterial({ color: 0x48bb78, linewidth: 3 });
+        const line = new THREE.Line(geometry, material);
+        this.measurementObjects.push(line);
+        this.scene.add(line);
+
+        // Create endpoints
+        [p1, p2].forEach(p => {
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.08, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0x48bb78 })
+            );
+            sphere.position.copy(p);
+            this.measurementObjects.push(sphere);
+            this.scene.add(sphere);
+        });
+
+        // Create label sprite
+        const midpoint = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+        const labelSprite = this.createTextSprite(label);
+        labelSprite.position.copy(midpoint);
+        labelSprite.position.y += 0.3;
+        this.measurementObjects.push(labelSprite);
+        this.scene.add(labelSprite);
+    }
+
+    createAreaVisualization(points, label) {
+        // Create polygon outline
+        for (let i = 0; i < points.length; i++) {
+            const next = (i + 1) % points.length;
+            const geometry = new THREE.BufferGeometry().setFromPoints([points[i], points[next]]);
+            const material = new THREE.LineBasicMaterial({ color: 0xf6e05e, linewidth: 3 });
+            const line = new THREE.Line(geometry, material);
+            this.measurementObjects.push(line);
+            this.scene.add(line);
+        }
+
+        // Create corner markers
+        points.forEach(p => {
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.08, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0xf6e05e })
+            );
+            sphere.position.copy(p);
+            this.measurementObjects.push(sphere);
+            this.scene.add(sphere);
+        });
+
+        // Calculate centroid for label
+        const centroid = new THREE.Vector3();
+        points.forEach(p => centroid.add(p));
+        centroid.divideScalar(points.length);
+
+        const labelSprite = this.createTextSprite(label, 0xf6e05e);
+        labelSprite.position.copy(centroid);
+        labelSprite.position.y += 0.5;
+        this.measurementObjects.push(labelSprite);
+        this.scene.add(labelSprite);
+    }
+
+    createTextSprite(text, color = 0x48bb78) {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 256;
+        canvas.height = 64;
+
+        context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        context.font = 'Bold 28px Arial';
+        context.fillStyle = '#ffffff';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({ map: texture });
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(1.5, 0.4, 1);
+
+        return sprite;
+    }
+
+    clearMeasurements() {
+        // Remove all measurement objects from scene
+        this.measurementObjects.forEach(obj => this.scene.remove(obj));
+        this.measurementObjects = [];
+
+        // Clear data
+        this.measurements = [];
+        this.measurePoints = [];
+        this.clearTempMeasurement();
+
+        this.updateMeasurementsList();
+        this.saveMeasurements();
+        this.showToast('All measurements cleared', 'success');
+    }
+
+    updateMeasurementsList() {
+        const list = document.getElementById('measurements-list');
+        if (!list) return;
+
+        if (this.measurements.length === 0) {
+            list.innerHTML = '<p class="empty-measurements">No measurements yet</p>';
+            return;
+        }
+
+        list.innerHTML = this.measurements.map((m, i) => `
+            <div class="measurement-item" data-id="${m.id}">
+                <div class="measurement-icon">
+                    ${m.type === 'distance' ? '📏' : m.type === 'area' ? '⬛' : '📐'}
+                </div>
+                <div class="measurement-details">
+                    <input type="text" class="measurement-label" value="${m.label}"
+                           onchange="app.updateMeasurementLabel(${m.id}, this.value)">
+                    <span class="measurement-value">${m.displayValue}</span>
+                </div>
+                <button class="measurement-delete" onclick="app.deleteMeasurement(${m.id})">×</button>
+            </div>
+        `).join('');
+
+        // Update summary
+        this.updateMeasurementSummary();
+    }
+
+    updateMeasurementSummary() {
+        const summary = document.getElementById('measurement-summary');
+        if (!summary) return;
+
+        const distances = this.measurements.filter(m => m.type === 'distance');
+        const areas = this.measurements.filter(m => m.type === 'area');
+        const heights = this.measurements.filter(m => m.type === 'height');
+
+        const totalArea = areas.reduce((sum, m) => sum + m.value, 0);
+        const totalLinear = distances.reduce((sum, m) => sum + m.value, 0);
+
+        summary.innerHTML = `
+            <div class="summary-item">
+                <span class="summary-label">Total Area:</span>
+                <span class="summary-value">${totalArea.toFixed(1)} sq ft</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Total Linear:</span>
+                <span class="summary-value">${Math.floor(totalLinear)}' ${Math.round((totalLinear % 1) * 12)}"</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Measurements:</span>
+                <span class="summary-value">${this.measurements.length}</span>
+            </div>
+        `;
+    }
+
+    updateMeasurementLabel(id, label) {
+        const measurement = this.measurements.find(m => m.id === id);
+        if (measurement) {
+            measurement.label = label;
+            this.saveMeasurements();
+        }
+    }
+
+    deleteMeasurement(id) {
+        const index = this.measurements.findIndex(m => m.id === id);
+        if (index > -1) {
+            this.measurements.splice(index, 1);
+            // Note: Would need to track which objects belong to which measurement for full cleanup
+            this.updateMeasurementsList();
+            this.saveMeasurements();
+            this.showToast('Measurement deleted', 'success');
+        }
+    }
+
+    saveMeasurements() {
+        localStorage.setItem('patagon3d_measurements', JSON.stringify(this.measurements));
+    }
+
+    loadSavedMeasurements() {
+        try {
+            const saved = localStorage.getItem('patagon3d_measurements');
+            if (saved) {
+                this.measurements = JSON.parse(saved);
+                this.updateMeasurementsList();
+            }
+        } catch (e) {
+            console.error('Failed to load measurements:', e);
+        }
+    }
+
+    exportMeasurements() {
+        if (this.measurements.length === 0) {
+            this.showToast('No measurements to export', 'error');
+            return;
+        }
+
+        const report = {
+            project: 'Patagon3d Measurement Report',
+            date: new Date().toLocaleDateString(),
+            measurements: this.measurements.map(m => ({
+                label: m.label,
+                type: m.type,
+                value: m.displayValue,
+                rawValue: m.value
+            })),
+            summary: {
+                totalArea: this.measurements.filter(m => m.type === 'area').reduce((sum, m) => sum + m.value, 0).toFixed(1) + ' sq ft',
+                totalLinear: this.measurements.filter(m => m.type === 'distance').reduce((sum, m) => sum + m.value, 0).toFixed(1) + ' ft',
+                measurementCount: this.measurements.length
+            }
+        };
+
+        // Create downloadable file
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `patagon3d-measurements-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        this.showToast('Measurements exported!', 'success');
+    }
+
+    showCalibrationModal() {
+        document.getElementById('calibration-modal')?.classList.remove('hidden');
+    }
+
+    hideCalibrationModal() {
+        document.getElementById('calibration-modal')?.classList.add('hidden');
+    }
+
+    applyCalibration() {
+        const knownDistance = parseFloat(document.getElementById('known-distance')?.value);
+        if (isNaN(knownDistance) || knownDistance <= 0) {
+            this.showToast('Enter a valid distance', 'error');
+            return;
+        }
+
+        // If we have 2 points, use them for calibration
+        if (this.measurePoints.length === 2) {
+            const p1 = this.measurePoints[0].position;
+            const p2 = this.measurePoints[1].position;
+            const measuredDistance = p1.distanceTo(p2);
+
+            // Calculate new scale factor
+            this.scaleFactor = knownDistance / measuredDistance * this.modelScale;
+            localStorage.setItem('patagon3d_scaleFactor', this.scaleFactor);
+
+            this.showToast(`Calibrated! 1 unit = ${(this.scaleFactor).toFixed(2)} feet`, 'success');
+            this.clearTempMeasurement();
+            this.measurePoints = [];
+        } else {
+            this.showToast('First measure a known distance, then calibrate', 'error');
+        }
+
+        this.hideCalibrationModal();
+    }
+
+    // ==================== OTHER METHODS ====================
 
     toggleAutoRotate() {
         if (this.controls) {
@@ -318,19 +891,9 @@ class Patagon3d {
         }
     }
 
-    toggleMeasureMode() {
-        this.measureMode = !this.measureMode;
-        document.getElementById('measure-btn')?.classList.toggle('active');
-        document.getElementById('measurement-panel')?.classList.toggle('hidden', !this.measureMode);
-
-        if (this.measureMode) {
-            this.showToast('Measure mode: Click two points', 'success');
-        }
-    }
-
     resetView() {
         if (this.camera && this.controls) {
-            this.camera.position.set(0, 2, 5);
+            this.camera.position.set(0, 3, 6);
             this.controls.reset();
         }
     }
@@ -383,7 +946,8 @@ class Patagon3d {
                 body: JSON.stringify({
                     model_url: this.modelUrl || '',
                     prompt: prompt,
-                    element_type: this.selectedElements.join(',')
+                    element_type: this.selectedElements.join(','),
+                    measurements: this.measurements
                 })
             });
 
@@ -430,7 +994,6 @@ class Patagon3d {
                 this.showToast(`Generation failed: ${job.error}`, 'error');
 
             } else {
-                // Still processing - poll again
                 setTimeout(() => this.pollRenovationStatus(jobId, generateBtn), 3000);
             }
 
@@ -520,7 +1083,6 @@ class Patagon3d {
             }
         });
 
-        // Scroll to section
         document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
     }
 

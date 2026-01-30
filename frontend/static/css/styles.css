@@ -664,6 +664,275 @@ body::before {
     }
 }
 
+/* ==================== MEASUREMENT TOOLS ==================== */
+
+.measurement-toolbar {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(66, 153, 225, 0.3);
+}
+
+.measurement-toolbar h3 {
+    font-size: 16px;
+    margin-bottom: 8px;
+    color: var(--sky-blue);
+}
+
+.measure-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.measure-mode-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 8px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: rgba(43, 108, 176, 0.1);
+    color: var(--text-primary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.measure-mode-btn .btn-icon {
+    font-size: 24px;
+}
+
+.measure-mode-btn:hover {
+    border-color: var(--primary-light);
+    background: rgba(66, 153, 225, 0.2);
+}
+
+.measure-mode-btn.active {
+    border-color: var(--success);
+    background: rgba(72, 187, 120, 0.2);
+    box-shadow: 0 0 10px rgba(72, 187, 120, 0.3);
+}
+
+.measure-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    background: rgba(66, 153, 225, 0.2);
+    border-color: var(--primary-light);
+    color: var(--text-primary);
+}
+
+/* Measurement Summary */
+.measurement-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(26, 54, 93, 0.5);
+    border-radius: 10px;
+}
+
+.summary-item {
+    text-align: center;
+}
+
+.summary-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.summary-value {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--sky-blue);
+}
+
+/* Measurements List */
+.measurements-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.measurement-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(26, 54, 93, 0.5);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(66, 153, 225, 0.2);
+}
+
+.measurement-icon {
+    font-size: 20px;
+    width: 32px;
+    text-align: center;
+}
+
+.measurement-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.measurement-label {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0;
+    width: 100%;
+}
+
+.measurement-label:focus {
+    outline: none;
+    border-bottom: 1px solid var(--primary-light);
+}
+
+.measurement-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--success);
+    font-family: monospace;
+}
+
+.measurement-delete {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--error);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.measurement-delete:hover {
+    background: var(--error);
+    color: white;
+}
+
+.empty-measurements {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 20px;
+    font-size: 14px;
+}
+
+/* Calibration Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+    border: 1px solid rgba(66, 153, 225, 0.3);
+}
+
+.modal-content h3 {
+    font-size: 18px;
+    margin-bottom: 12px;
+    color: var(--sky-blue);
+}
+
+.modal-content p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.calibration-input {
+    margin-bottom: 20px;
+}
+
+.calibration-input label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.calibration-input input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.calibration-input input:focus {
+    outline: none;
+    border-color: var(--primary-light);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.modal-actions .btn {
+    flex: 1;
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 2px solid var(--border);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+    background: rgba(66, 153, 225, 0.2);
+    border-color: var(--primary-light);
+}
+
 /* Media Queries */
 @media (min-width: 768px) {
     .app-container {
@@ -676,5 +945,9 @@ body::before {
 
     .proposals-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    .measurement-summary {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
