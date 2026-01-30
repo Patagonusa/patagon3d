@@ -1,13 +1,19 @@
 """
-Patagon3d Backend - Video to 3D Reconstruction with AI Renovation
+Patagon3d Backend - 3D Visualization & AI Renovation System
 For Hello Projects Pro (CSLB #1135440)
+
+Features:
+- 3D space visualization with interactive demo kitchen
+- Precision measurement tools (distance, area, height)
+- AI renovation proposals via DALL-E 3 (images)
+- AI renovation videos via Luma Dream Machine
 """
 import os
 import uuid
 import httpx
 import asyncio
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -18,7 +24,7 @@ from pydantic import BaseModel
 import base64
 import json
 
-app = FastAPI(title="Patagon3d", description="3D Scanning & AI Renovation System")
+app = FastAPI(title="Patagon3d", description="3D Visualization & AI Renovation System")
 
 # CORS for mobile browser access
 app.add_middleware(
@@ -29,22 +35,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Luma AI Configuration - Genie API for 3D
+# Luma AI Configuration - Dream Machine API (for video generation)
 LUMA_API_KEY = os.environ.get("LUMA_API_KEY", "")
-# Luma Genie API endpoint for 3D generation
-LUMA_GENIE_API = "https://webapp.engineeringlumalabs.com/api"
+LUMA_API_BASE = "https://api.lumalabs.ai/dream-machine/v1"
 
 # OpenAI Configuration for AI Renovation
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_API_BASE = "https://api.openai.com/v1"
 
-# Renovation jobs store
+# Job stores
 renovation_jobs = {}
-
-# Store job statuses in memory (use Redis in production)
+video_jobs = {}
 jobs_store = {}
-
-# Uploaded files store (for demo - use cloud storage in production)
 uploaded_files = {}
 
 # Templates
@@ -69,6 +71,23 @@ class RenovationRequest(BaseModel):
     element_type: str
 
 
+class VideoGenerationRequest(BaseModel):
+    prompt: str
+    element_type: str
+    style: Optional[str] = "modern"
+
+
+class VideoJob(BaseModel):
+    job_id: str
+    status: str
+    prompt: str
+    luma_generation_id: Optional[str] = None
+    video_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    error: Optional[str] = None
+    created_at: str
+
+
 @app.get("/")
 async def home(request: Request):
     """Render main page"""
@@ -76,199 +95,152 @@ async def home(request: Request):
 
 
 @app.post("/api/upload-video")
-async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+async def upload_video(file: UploadFile = File(...)):
     """
-    Upload a video file and start 3D reconstruction via Luma AI Genie
+    Upload a video file - currently loads interactive demo kitchen for measurement.
+    Note: Video-to-3D conversion requires Luma iOS app or enterprise API access.
     """
-    if not LUMA_API_KEY:
-        raise HTTPException(status_code=500, detail="Luma API key not configured")
-
-    # Validate file type
-    allowed_types = ["video/mp4", "video/quicktime", "video/webm", "video/x-msvideo", "video/x-m4v"]
-    content_type = file.content_type or "video/mp4"
-
     # Generate job ID
     job_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
 
-    # Read file content
-    content = await file.read()
-
-    # Store file temporarily
-    uploaded_files[job_id] = {
-        "content": content,
-        "filename": file.filename,
-        "content_type": content_type
-    }
-
-    # Store initial job status
+    # Store job - demo mode (model_url=None triggers interactive demo kitchen)
     jobs_store[job_id] = JobStatus(
         job_id=job_id,
-        status="pending",
+        status="completed",
+        model_url=None,
         created_at=now,
         updated_at=now
     )
 
-    # Start background processing
-    background_tasks.add_task(process_video_to_3d, job_id)
+    return {
+        "job_id": job_id,
+        "status": "completed",
+        "message": "Video received. Loading interactive demo kitchen with measurement tools.",
+        "note": "For actual video-to-3D scanning, use Luma AI iOS app to capture and export GLB models."
+    }
 
-    return {"job_id": job_id, "status": "pending", "message": "Video uploaded, processing started"}
 
+# ============================================================================
+# LUMA DREAM MACHINE API - AI Renovation Video Generation
+# ============================================================================
 
-async def process_video_to_3d(job_id: str):
+@app.post("/api/generate-video")
+async def generate_renovation_video(background_tasks: BackgroundTasks, request: VideoGenerationRequest):
     """
-    Background task to process video through Luma AI Genie API
+    Generate AI renovation visualization video using Luma Dream Machine API.
+    Creates a cinematic walkthrough video of the proposed renovation.
     """
+    if not LUMA_API_KEY:
+        raise HTTPException(status_code=500, detail="Luma API key not configured")
+
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    # Create the video generation prompt
+    full_prompt = f"""Cinematic interior design video walkthrough of a beautiful kitchen renovation.
+    Element focus: {request.element_type}.
+    Design details: {request.prompt}.
+    Style: {request.style}.
+    Professional real estate video quality, smooth camera movement, natural lighting,
+    high-end finishes, magazine-worthy interior design."""
+
+    video_jobs[job_id] = VideoJob(
+        job_id=job_id,
+        status="processing",
+        prompt=full_prompt,
+        created_at=now
+    )
+
+    background_tasks.add_task(process_luma_video_generation, job_id, full_prompt)
+
+    return {"job_id": job_id, "status": "processing", "message": "Generating AI renovation video..."}
+
+
+async def process_luma_video_generation(job_id: str, prompt: str):
+    """Generate video using Luma Dream Machine API"""
     try:
-        jobs_store[job_id].status = "processing"
-        jobs_store[job_id].updated_at = datetime.utcnow().isoformat()
-
-        file_data = uploaded_files.get(job_id)
-        if not file_data:
-            raise Exception("File data not found")
-
-        video_content = file_data["content"]
-        filename = file_data["filename"]
-
-        async with httpx.AsyncClient(timeout=600.0) as client:
-            # Luma Genie API - Create capture from video
-            # Step 1: Get upload URL
+        async with httpx.AsyncClient(timeout=300.0) as client:
             headers = {
-                "Authorization": f"luma-api-key={LUMA_API_KEY}",
+                "Authorization": f"Bearer {LUMA_API_KEY}",
                 "Content-Type": "application/json"
             }
 
-            # Try the Luma Genie/Capture API
-            # First, create a new capture
-            create_response = await client.post(
-                "https://webapp.engineeringlumalabs.com/api/v3/captures",
+            # Create video generation request
+            response = await client.post(
+                f"{LUMA_API_BASE}/generations",
                 headers=headers,
                 json={
-                    "title": f"Patagon3d Scan - {filename}",
+                    "prompt": prompt,
+                    "aspect_ratio": "16:9",
+                    "loop": False
                 }
             )
 
-            if create_response.status_code in [200, 201]:
-                capture_data = create_response.json()
-                capture_id = capture_data.get("capture", {}).get("uuid") or capture_data.get("uuid") or capture_data.get("id")
-                upload_url = capture_data.get("signedUrls", {}).get("source") or capture_data.get("uploadUrl")
+            if response.status_code in [200, 201, 202]:
+                result = response.json()
+                generation_id = result.get("id")
+                video_jobs[job_id].luma_generation_id = generation_id
 
-                if upload_url:
-                    # Step 2: Upload the video to the signed URL
-                    upload_response = await client.put(
-                        upload_url,
-                        content=video_content,
-                        headers={"Content-Type": "video/mp4"}
-                    )
-
-                    if upload_response.status_code in [200, 201, 204]:
-                        # Step 3: Trigger processing
-                        trigger_response = await client.post(
-                            f"https://webapp.engineeringlumalabs.com/api/v3/captures/{capture_id}/trigger",
-                            headers=headers
-                        )
-
-                        jobs_store[job_id].luma_capture_id = capture_id
-                        jobs_store[job_id].updated_at = datetime.utcnow().isoformat()
-
-                        # Poll for completion
-                        await poll_luma_genie_status(job_id, capture_id, client, headers)
-                        return
-
-            # If v3 API didn't work, try v2 API
-            v2_response = await client.post(
-                "https://webapp.engineeringlumalabs.com/api/v2/capture",
-                headers={
-                    "Authorization": f"luma-api-key={LUMA_API_KEY}",
-                },
-                files={"file": (filename, video_content, "video/mp4")}
-            )
-
-            if v2_response.status_code in [200, 201, 202]:
-                result = v2_response.json()
-                capture_id = result.get("uuid") or result.get("id") or result.get("capture_id")
-
-                jobs_store[job_id].luma_capture_id = capture_id
-                jobs_store[job_id].updated_at = datetime.utcnow().isoformat()
-
-                await poll_luma_genie_status(job_id, capture_id, client, {
-                    "Authorization": f"luma-api-key={LUMA_API_KEY}"
-                })
-                return
-
-            # If all Luma APIs fail, use demo mode
-            jobs_store[job_id].status = "completed"
-            jobs_store[job_id].model_url = None  # Will trigger demo mode in frontend
-            jobs_store[job_id].error = f"Luma API unavailable - using demo mode. API Response: {create_response.status_code}"
-            jobs_store[job_id].updated_at = datetime.utcnow().isoformat()
+                # Poll for completion
+                await poll_luma_video_status(job_id, generation_id, client, headers)
+            else:
+                video_jobs[job_id].status = "failed"
+                video_jobs[job_id].error = f"Luma API error: {response.status_code} - {response.text}"
 
     except Exception as e:
-        jobs_store[job_id].status = "failed"
-        jobs_store[job_id].error = str(e)
-        jobs_store[job_id].updated_at = datetime.utcnow().isoformat()
-    finally:
-        # Clean up uploaded file
-        if job_id in uploaded_files:
-            del uploaded_files[job_id]
+        video_jobs[job_id].status = "failed"
+        video_jobs[job_id].error = str(e)
 
 
-async def poll_luma_genie_status(job_id: str, capture_id: str, client: httpx.AsyncClient, headers: dict):
-    """Poll Luma Genie API for capture completion"""
-    max_attempts = 120  # 20 minutes max (10 second intervals)
+async def poll_luma_video_status(job_id: str, generation_id: str, client: httpx.AsyncClient, headers: dict):
+    """Poll Luma Dream Machine API for video generation completion"""
+    max_attempts = 60  # 5 minutes max
     attempt = 0
 
     while attempt < max_attempts:
         try:
-            # Check capture status
             response = await client.get(
-                f"https://webapp.engineeringlumalabs.com/api/v3/captures/{capture_id}",
+                f"{LUMA_API_BASE}/generations/{generation_id}",
                 headers=headers
             )
 
             if response.status_code == 200:
                 result = response.json()
-                capture = result.get("capture", result)
-                state = capture.get("state") or capture.get("status")
+                state = result.get("state") or result.get("status")
 
-                if state in ["complete", "completed", "done", "ready"]:
-                    # Get the 3D model URL
-                    assets = capture.get("assets", {})
-                    model_url = (
-                        assets.get("glb") or
-                        assets.get("mesh") or
-                        assets.get("source") or
-                        capture.get("model_url") or
-                        capture.get("latestRun", {}).get("artifacts", [{}])[0].get("url")
-                    )
-                    preview_url = assets.get("thumbnail") or capture.get("preview_url")
+                if state in ["completed", "complete", "done"]:
+                    # Get the video URL
+                    assets = result.get("assets", {})
+                    video_url = assets.get("video") or result.get("video", {}).get("url")
+                    thumbnail_url = assets.get("thumbnail") or result.get("thumbnail", {}).get("url")
 
-                    jobs_store[job_id].status = "completed"
-                    jobs_store[job_id].model_url = model_url
-                    jobs_store[job_id].preview_url = preview_url
-                    jobs_store[job_id].updated_at = datetime.utcnow().isoformat()
+                    video_jobs[job_id].status = "completed"
+                    video_jobs[job_id].video_url = video_url
+                    video_jobs[job_id].thumbnail_url = thumbnail_url
                     return
 
                 elif state in ["failed", "error"]:
-                    jobs_store[job_id].status = "failed"
-                    jobs_store[job_id].error = capture.get("error") or capture.get("failureReason") or "Processing failed"
-                    jobs_store[job_id].updated_at = datetime.utcnow().isoformat()
+                    video_jobs[job_id].status = "failed"
+                    video_jobs[job_id].error = result.get("failure_reason") or "Video generation failed"
                     return
-
-                # Update status
-                jobs_store[job_id].status = f"processing ({state})"
-                jobs_store[job_id].updated_at = datetime.utcnow().isoformat()
 
         except Exception as e:
             print(f"Poll error: {e}")
 
         attempt += 1
-        await asyncio.sleep(10)  # Wait 10 seconds between polls
+        await asyncio.sleep(5)
 
-    # Timeout - but mark as completed with demo mode
-    jobs_store[job_id].status = "completed"
-    jobs_store[job_id].model_url = None
-    jobs_store[job_id].error = "Processing timeout - using demo mode"
-    jobs_store[job_id].updated_at = datetime.utcnow().isoformat()
+    video_jobs[job_id].status = "failed"
+    video_jobs[job_id].error = "Video generation timeout"
+
+
+@app.get("/api/video/{job_id}")
+async def get_video_status(job_id: str):
+    """Get AI video generation job status"""
+    if job_id not in video_jobs:
+        raise HTTPException(status_code=404, detail="Video job not found")
+    return video_jobs[job_id]
 
 
 @app.get("/api/job/{job_id}")
