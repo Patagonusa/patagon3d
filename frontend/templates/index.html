@@ -64,15 +64,27 @@
                 </div>
 
                 <div class="measurements-container">
-                    <div class="measurement-image">
-                        <img id="measurement-photo" src="" alt="Room being analyzed">
+                    <!-- Left: Image with overlays -->
+                    <div class="measurement-image-wrapper">
+                        <div class="measurement-image">
+                            <img id="measurement-photo" src="" alt="Room being analyzed">
+                            <!-- Measurement overlays will be added here by JS -->
+                            <div id="measurement-overlay" class="measurement-overlay"></div>
+                        </div>
+
+                        <div id="measurements-loading" class="loading-indicator">
+                            <div class="wave-loader">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <p>AI is analyzing your room...</p>
+                        </div>
                     </div>
 
-                    <div id="measurements-loading" class="loading-indicator">
-                        <div class="spinner"></div>
-                        <p>AI is analyzing your room...</p>
-                    </div>
-
+                    <!-- Right: Results Panel -->
                     <div id="measurements-results" class="measurements-results hidden">
                         <h3>Estimated Measurements</h3>
 
@@ -100,12 +112,12 @@
                         <div class="confidence-indicator" id="confidence-indicator">
                             <!-- Populated by JS -->
                         </div>
-                    </div>
 
-                    <button id="to-renovation-btn" class="btn btn-primary btn-large">
-                        <span class="btn-icon">🎨</span>
-                        Continue to AI Renovation
-                    </button>
+                        <button id="to-renovation-btn" class="btn btn-primary btn-large">
+                            <span class="btn-icon">🎨</span>
+                            Continue to AI Renovation
+                        </button>
+                    </div>
                 </div>
             </section>
 

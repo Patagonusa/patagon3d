@@ -210,6 +210,7 @@ function displayMeasurements(measurements) {
     const surfaceAreas = document.getElementById('surface-areas');
     const fixturesList = document.getElementById('fixtures-list');
     const confidenceIndicator = document.getElementById('confidence-indicator');
+    const overlay = document.getElementById('measurement-overlay');
 
     // Room dimensions
     if (measurements.room_dimensions) {
@@ -232,6 +233,21 @@ function displayMeasurements(measurements) {
                 <span class="value">${dims.total_sqft || 'N/A'} sq ft</span>
             </div>
         `;
+
+        // Add overlays on image
+        if (overlay) {
+            overlay.innerHTML = `
+                <div class="overlay-measurement" style="top: 10%; left: 50%; transform: translateX(-50%);">
+                    Width: ${dims.width_ft || '?'}'
+                </div>
+                <div class="overlay-measurement" style="top: 50%; right: 5%; transform: translateY(-50%);">
+                    Height: ${dims.height_ft || '?'}'
+                </div>
+                <div class="overlay-measurement" style="bottom: 15%; left: 50%; transform: translateX(-50%);">
+                    ${dims.total_sqft || '?'} sq ft
+                </div>
+            `;
+        }
     }
 
     // Surface areas
@@ -263,6 +279,15 @@ function displayMeasurements(measurements) {
                 <span class="value">${surf.floor_sqft || 'N/A'} sq ft</span>
             </div>
         `;
+
+        // Add surface overlays
+        if (overlay && surf.countertop_sqft) {
+            overlay.innerHTML += `
+                <div class="overlay-measurement" style="top: 45%; left: 30%;">
+                    Countertop: ${surf.countertop_sqft} sq ft
+                </div>
+            `;
+        }
     }
 
     // Fixtures
