@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Patagon3d - AI Renovation Visualizer</title>
     <link rel="stylesheet" href="/static/css/styles.css">
-    <!-- Three.js for 3D viewing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -24,26 +20,32 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Step 1: Upload Video -->
+            <!-- Step 1: Upload Photo -->
             <section id="upload-section" class="section active">
                 <div class="section-header">
                     <span class="step-number">1</span>
-                    <h2>Capture Your Space</h2>
+                    <h2>Upload Room Photo</h2>
                 </div>
-                <p class="instruction">Record a video walking around your kitchen or room. Move slowly and capture all angles.</p>
+                <p class="instruction">Take a photo of your kitchen, bathroom, or room for AI analysis and renovation visualization.</p>
 
                 <div class="upload-area" id="upload-area">
-                    <div class="upload-icon">📹</div>
-                    <p>Tap to record or select video</p>
-                    <input type="file" id="video-input" accept="video/*" capture="environment">
+                    <div class="upload-icon">📷</div>
+                    <p>Tap to take photo or select from gallery</p>
+                    <input type="file" id="image-input" accept="image/*" capture="environment">
                 </div>
 
-                <div id="video-preview" class="video-preview hidden">
-                    <video id="preview-video" controls></video>
-                    <button id="upload-btn" class="btn btn-primary">
-                        <span class="btn-icon">☁️</span>
-                        Upload & Create 3D Model
-                    </button>
+                <div id="image-preview" class="image-preview hidden">
+                    <img id="preview-image" src="" alt="Uploaded room photo">
+                    <div class="preview-actions">
+                        <button id="analyze-btn" class="btn btn-primary">
+                            <span class="btn-icon">📐</span>
+                            Analyze Measurements
+                        </button>
+                        <button id="continue-btn" class="btn btn-secondary">
+                            <span class="btn-icon">🎨</span>
+                            Skip to Renovation
+                        </button>
+                    </div>
                 </div>
 
                 <div id="upload-progress" class="progress-container hidden">
@@ -52,159 +54,205 @@
                     </div>
                     <p id="progress-text">Uploading...</p>
                 </div>
-
-                <div class="demo-option">
-                    <p>Or try with our demo kitchen:</p>
-                    <button id="demo-btn" class="btn btn-secondary">
-                        <span class="btn-icon">🏠</span>
-                        Try Demo Kitchen
-                    </button>
-                </div>
             </section>
 
-            <!-- Step 2: View & Measure 3D Model -->
-            <section id="model-section" class="section hidden">
+            <!-- Step 2: AI Measurements -->
+            <section id="measurements-section" class="section hidden">
                 <div class="section-header">
                     <span class="step-number">2</span>
-                    <h2>Measure Your Space</h2>
+                    <h2>AI Measurements</h2>
                 </div>
 
-                <div class="model-viewer-container">
-                    <div id="model-viewer" class="model-viewer"></div>
-                    <div class="viewer-controls">
-                        <button class="control-btn" id="rotate-btn" title="Auto Rotate">🔄</button>
-                        <button class="control-btn" id="reset-btn" title="Reset View">🎯</button>
+                <div class="measurements-container">
+                    <div class="measurement-image">
+                        <img id="measurement-photo" src="" alt="Room being analyzed">
                     </div>
-                </div>
 
-                <!-- Measurement Toolbar -->
-                <div class="measurement-toolbar">
-                    <h3>Measurement Tools</h3>
-                    <p id="measure-instruction" class="measure-instruction">Select a measurement tool above</p>
-                    <div class="measure-buttons">
-                        <button class="measure-mode-btn" id="measure-distance-btn">
-                            <span class="btn-icon">📏</span>
-                            <span>Distance</span>
-                        </button>
-                        <button class="measure-mode-btn" id="measure-area-btn">
-                            <span class="btn-icon">⬛</span>
-                            <span>Area</span>
-                        </button>
-                        <button class="measure-mode-btn" id="measure-height-btn">
-                            <span class="btn-icon">📐</span>
-                            <span>Height</span>
-                        </button>
+                    <div id="measurements-loading" class="loading-indicator">
+                        <div class="spinner"></div>
+                        <p>AI is analyzing your room...</p>
                     </div>
-                    <div class="measure-actions">
-                        <button class="action-btn" id="calibrate-btn" title="Calibrate measurements">
-                            ⚙️ Calibrate
-                        </button>
-                        <button class="action-btn" id="clear-measurements-btn" title="Clear all measurements">
-                            🗑️ Clear All
-                        </button>
-                        <button class="action-btn" id="export-measurements-btn" title="Export measurements">
-                            📥 Export
-                        </button>
-                    </div>
-                </div>
 
-                <!-- Measurements List -->
-                <div class="measurement-panel">
-                    <h3>Your Measurements</h3>
-                    <div id="measurement-summary" class="measurement-summary">
-                        <div class="summary-item">
-                            <span class="summary-label">Total Area:</span>
-                            <span class="summary-value">0 sq ft</span>
+                    <div id="measurements-results" class="measurements-results hidden">
+                        <h3>Estimated Measurements</h3>
+
+                        <div class="measurement-card">
+                            <h4>Room Dimensions</h4>
+                            <div class="measurement-grid" id="room-dimensions">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Total Linear:</span>
-                            <span class="summary-value">0' 0"</span>
+
+                        <div class="measurement-card">
+                            <h4>Surface Areas</h4>
+                            <div class="measurement-grid" id="surface-areas">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Measurements:</span>
-                            <span class="summary-value">0</span>
+
+                        <div class="measurement-card">
+                            <h4>Fixtures Identified</h4>
+                            <div id="fixtures-list" class="fixtures-list">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
-                    </div>
-                    <div id="measurements-list" class="measurements-list">
-                        <p class="empty-measurements">No measurements yet</p>
-                    </div>
-                </div>
 
-                <button id="continue-to-design" class="btn btn-primary">
-                    <span class="btn-icon">🎨</span>
-                    Continue to AI Design
-                </button>
-            </section>
-
-            <!-- Calibration Modal -->
-            <div id="calibration-modal" class="modal hidden">
-                <div class="modal-content">
-                    <h3>Calibrate Measurements</h3>
-                    <p>Measure a known distance in your model, then enter the real-world measurement to calibrate.</p>
-                    <div class="calibration-input">
-                        <label for="known-distance">Known distance (feet):</label>
-                        <input type="number" id="known-distance" placeholder="e.g., 3.5" step="0.1">
-                    </div>
-                    <div class="modal-actions">
-                        <button class="btn btn-secondary" id="cancel-calibration">Cancel</button>
-                        <button class="btn btn-primary" id="apply-calibration">Apply</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 3: AI Renovation -->
-            <section id="design-section" class="section hidden">
-                <div class="section-header">
-                    <span class="step-number">3</span>
-                    <h2>AI Renovation Proposals</h2>
-                </div>
-
-                <div class="design-options">
-                    <div class="option-group">
-                        <label>What would you like to change?</label>
-                        <div class="element-buttons">
-                            <button class="element-btn" data-element="cabinets">🗄️ Cabinets</button>
-                            <button class="element-btn" data-element="countertops">⬛ Countertops</button>
-                            <button class="element-btn" data-element="backsplash">🧱 Backsplash</button>
-                            <button class="element-btn" data-element="flooring">🟫 Flooring</button>
-                            <button class="element-btn" data-element="appliances">🍳 Appliances</button>
-                            <button class="element-btn" data-element="lighting">💡 Lighting</button>
+                        <div class="confidence-indicator" id="confidence-indicator">
+                            <!-- Populated by JS -->
                         </div>
                     </div>
 
-                    <div class="option-group">
-                        <label>Describe your vision</label>
-                        <textarea id="design-prompt" placeholder="e.g., Modern white shaker cabinets with brushed gold hardware, marble countertops..."></textarea>
-                    </div>
-
-                    <div class="style-presets">
-                        <p>Quick styles:</p>
-                        <div class="preset-buttons">
-                            <button class="preset-btn" data-preset="modern">Modern Minimalist</button>
-                            <button class="preset-btn" data-preset="farmhouse">Farmhouse Rustic</button>
-                            <button class="preset-btn" data-preset="transitional">Transitional</button>
-                            <button class="preset-btn" data-preset="contemporary">Contemporary Luxury</button>
-                        </div>
-                    </div>
-
-                    <button id="generate-design" class="btn btn-primary btn-large">
-                        <span class="btn-icon">✨</span>
-                        Generate AI Renovation
+                    <button id="to-renovation-btn" class="btn btn-primary btn-large">
+                        <span class="btn-icon">🎨</span>
+                        Continue to AI Renovation
                     </button>
                 </div>
+            </section>
 
-                <div id="ai-results" class="ai-results hidden">
-                    <h3>Your Renovation Proposals</h3>
-                    <div id="proposals-grid" class="proposals-grid"></div>
+            <!-- Step 3: AI Renovation -->
+            <section id="renovation-section" class="section hidden">
+                <div class="section-header">
+                    <span class="step-number">3</span>
+                    <h2>AI Renovation</h2>
+                </div>
+
+                <div class="renovation-container">
+                    <!-- Original Image -->
+                    <div class="original-image-container">
+                        <h4>Your Room</h4>
+                        <img id="original-photo" src="" alt="Original room">
+                    </div>
+
+                    <!-- Renovation Options -->
+                    <div class="renovation-options">
+                        <div class="option-group">
+                            <label>What do you want to change?</label>
+                            <div class="element-buttons">
+                                <button class="element-btn active" data-element="cabinets">🗄️ Cabinets</button>
+                                <button class="element-btn" data-element="countertops">⬛ Countertops</button>
+                                <button class="element-btn" data-element="backsplash">🧱 Backsplash</button>
+                                <button class="element-btn" data-element="flooring">🟫 Flooring</button>
+                                <button class="element-btn" data-element="appliances">🍳 Appliances</button>
+                            </div>
+                        </div>
+
+                        <div class="option-group">
+                            <label>Style</label>
+                            <div class="style-buttons">
+                                <button class="style-btn active" data-style="modern">Modern</button>
+                                <button class="style-btn" data-style="farmhouse">Farmhouse</button>
+                                <button class="style-btn" data-style="transitional">Transitional</button>
+                                <button class="style-btn" data-style="contemporary">Contemporary</button>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic options based on element type -->
+                        <div id="cabinets-options" class="element-options">
+                            <label>Cabinet Color</label>
+                            <div class="color-buttons">
+                                <button class="color-btn active" data-color="white" style="background: white; border: 1px solid #ccc;">White</button>
+                                <button class="color-btn" data-color="navy blue" style="background: #1a365d;">Navy</button>
+                                <button class="color-btn" data-color="sage green" style="background: #9CAF88;">Sage</button>
+                                <button class="color-btn" data-color="charcoal gray" style="background: #374151;">Gray</button>
+                                <button class="color-btn" data-color="natural wood" style="background: #8B5A2B;">Wood</button>
+                            </div>
+                        </div>
+
+                        <div id="countertops-options" class="element-options hidden">
+                            <label>Countertop Material</label>
+                            <div class="material-buttons">
+                                <button class="material-btn active" data-material="quartz" data-color="white with gray veining">White Quartz</button>
+                                <button class="material-btn" data-material="granite" data-color="black galaxy">Black Granite</button>
+                                <button class="material-btn" data-material="marble" data-color="carrara white">Carrara Marble</button>
+                                <button class="material-btn" data-material="butcher block" data-color="walnut">Butcher Block</button>
+                            </div>
+                        </div>
+
+                        <div id="backsplash-options" class="element-options hidden">
+                            <label>Backsplash Style</label>
+                            <div class="material-buttons">
+                                <button class="material-btn active" data-material="subway tile" data-color="white">White Subway</button>
+                                <button class="material-btn" data-material="herringbone tile" data-color="white">Herringbone</button>
+                                <button class="material-btn" data-material="mosaic tile" data-color="blue and white">Mosaic</button>
+                                <button class="material-btn" data-material="marble slab" data-color="white veined">Marble Slab</button>
+                            </div>
+                        </div>
+
+                        <div id="flooring-options" class="element-options hidden">
+                            <label>Flooring Type</label>
+                            <div class="material-buttons">
+                                <button class="material-btn active" data-material="hardwood" data-color="medium oak">Oak Hardwood</button>
+                                <button class="material-btn" data-material="luxury vinyl plank" data-color="gray wash">LVP Gray</button>
+                                <button class="material-btn" data-material="porcelain tile" data-color="white marble look">Tile</button>
+                                <button class="material-btn" data-material="slate" data-color="dark gray">Slate</button>
+                            </div>
+                        </div>
+
+                        <div id="appliances-options" class="element-options hidden">
+                            <label>Appliance Finish</label>
+                            <div class="material-buttons">
+                                <button class="material-btn active" data-material="stainless steel" data-color="stainless">Stainless Steel</button>
+                                <button class="material-btn" data-material="black stainless" data-color="black stainless">Black Stainless</button>
+                                <button class="material-btn" data-material="white" data-color="white">White</button>
+                                <button class="material-btn" data-material="panel ready" data-color="custom panel">Panel Ready</button>
+                            </div>
+                        </div>
+
+                        <button id="generate-renovation" class="btn btn-primary btn-large">
+                            <span class="btn-icon">✨</span>
+                            Generate AI Renovation
+                        </button>
+                    </div>
+
+                    <!-- AI Result -->
+                    <div id="renovation-result" class="renovation-result hidden">
+                        <h4>AI Renovation Proposal</h4>
+                        <div id="renovation-loading" class="loading-indicator">
+                            <div class="spinner"></div>
+                            <p>AI is transforming your room...</p>
+                        </div>
+                        <div id="renovation-image-container" class="hidden">
+                            <img id="renovation-image" src="" alt="AI Renovation">
+                            <div class="result-actions">
+                                <button id="download-btn" class="btn btn-secondary">
+                                    <span class="btn-icon">📥</span>
+                                    Download
+                                </button>
+                                <button id="new-renovation-btn" class="btn btn-secondary">
+                                    <span class="btn-icon">🔄</span>
+                                    Try Another
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <!-- Jobs History -->
-            <section id="history-section" class="section">
+            <!-- Comparison View -->
+            <section id="comparison-section" class="section hidden">
                 <div class="section-header">
-                    <h2>Recent Scans</h2>
+                    <h2>Before & After</h2>
                 </div>
-                <div id="jobs-list" class="jobs-list"></div>
+                <div class="comparison-container">
+                    <div class="comparison-image">
+                        <span class="comparison-label">Before</span>
+                        <img id="compare-before" src="" alt="Before">
+                    </div>
+                    <div class="comparison-image">
+                        <span class="comparison-label">After</span>
+                        <img id="compare-after" src="" alt="After">
+                    </div>
+                </div>
+                <div class="comparison-actions">
+                    <button id="back-to-options" class="btn btn-secondary">
+                        <span class="btn-icon">⬅️</span>
+                        Back to Options
+                    </button>
+                    <button id="new-photo-btn" class="btn btn-primary">
+                        <span class="btn-icon">📷</span>
+                        New Photo
+                    </button>
+                </div>
             </section>
         </main>
 

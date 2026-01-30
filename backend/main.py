@@ -1,30 +1,28 @@
 """
-Patagon3d Backend - 3D Visualization & AI Renovation System
+Patagon3d Backend - Real Photo AI Renovation & Measurement System
 For Hello Projects Pro (CSLB #1135440)
 
 Features:
-- 3D space visualization with interactive demo kitchen
-- Precision measurement tools (distance, area, height)
-- AI renovation proposals via DALL-E 3 (images)
-- AI renovation videos via Luma Dream Machine
+- Upload real room photos/videos
+- AI-powered measurement estimation using GPT-4 Vision
+- Real image modification using Google Vertex AI Imagen 3.0
+- Same approach as land-roof-measure project
 """
 import os
 import uuid
 import httpx
-import asyncio
+import base64
 from datetime import datetime
 from typing import Optional, List
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-import base64
-import json
 
-app = FastAPI(title="Patagon3d", description="3D Visualization & AI Renovation System")
+app = FastAPI(title="Patagon3d", description="Real Photo AI Renovation & Measurement System")
 
 # CORS for mobile browser access
 app.add_middleware(
@@ -35,55 +33,57 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Luma AI Configuration - Dream Machine API (for video generation)
-LUMA_API_KEY = os.environ.get("LUMA_API_KEY", "")
-LUMA_API_BASE = "https://api.lumalabs.ai/dream-machine/v1"
+# Google Vertex AI Configuration (Imagen 3.0 for image-to-image)
+GOOGLE_CLOUD_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT_ID", "")
+GOOGLE_CLOUD_API_KEY = os.environ.get("GOOGLE_CLOUD_API_KEY", "")
+GOOGLE_CLOUD_LOCATION = "us-central1"
 
-# OpenAI Configuration for AI Renovation
+# OpenAI Configuration (GPT-4 Vision for measurements)
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_API_BASE = "https://api.openai.com/v1"
+
+# Supabase Configuration (Image Storage)
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
 # Job stores
 renovation_jobs = {}
-video_jobs = {}
-jobs_store = {}
-uploaded_files = {}
+measurement_jobs = {}
+uploaded_images = {}
 
 # Templates
 templates = Jinja2Templates(directory="frontend/templates")
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
 
-class JobStatus(BaseModel):
-    job_id: str
-    status: str  # pending, processing, completed, failed
-    luma_capture_id: Optional[str] = None
-    model_url: Optional[str] = None
-    preview_url: Optional[str] = None
-    error: Optional[str] = None
-    created_at: str
-    updated_at: str
+class MeasurementRequest(BaseModel):
+    image_url: str
+    room_type: str = "kitchen"  # kitchen, bathroom, bedroom, living_room
 
 
 class RenovationRequest(BaseModel):
-    model_url: str
-    prompt: str
-    element_type: str
+    image_url: str
+    element_type: str  # cabinets, countertops, backsplash, flooring, appliances
+    style: str  # modern, transitional, farmhouse, contemporary
+    color: Optional[str] = None
+    material: Optional[str] = None
+    description: Optional[str] = None
 
 
-class VideoGenerationRequest(BaseModel):
-    prompt: str
-    element_type: str
-    style: Optional[str] = "modern"
-
-
-class VideoJob(BaseModel):
+class MeasurementResult(BaseModel):
     job_id: str
     status: str
-    prompt: str
-    luma_generation_id: Optional[str] = None
-    video_url: Optional[str] = None
-    thumbnail_url: Optional[str] = None
+    image_url: str
+    measurements: Optional[dict] = None
+    error: Optional[str] = None
+    created_at: str
+
+
+class RenovationResult(BaseModel):
+    job_id: str
+    status: str
+    original_url: str
+    generated_url: Optional[str] = None
+    prompt_used: Optional[str] = None
     error: Optional[str] = None
     created_at: str
 
@@ -94,185 +94,82 @@ async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.post("/api/upload-video")
-async def upload_video(file: UploadFile = File(...)):
-    """
-    Upload a video file - currently loads interactive demo kitchen for measurement.
-    Note: Video-to-3D conversion requires Luma iOS app or enterprise API access.
-    """
-    # Generate job ID
-    job_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+# ============================================================================
+# IMAGE UPLOAD
+# ============================================================================
 
-    # Store job - demo mode (model_url=None triggers interactive demo kitchen)
-    jobs_store[job_id] = JobStatus(
-        job_id=job_id,
-        status="completed",
-        model_url=None,
-        created_at=now,
-        updated_at=now
-    )
+@app.post("/api/upload-image")
+async def upload_image(file: UploadFile = File(...)):
+    """
+    Upload a room photo for analysis and renovation
+    Stores image and returns URL for further processing
+    """
+    # Generate unique ID
+    image_id = str(uuid.uuid4())
+
+    # Read file content
+    content = await file.read()
+    content_type = file.content_type or "image/jpeg"
+
+    # Store in memory (for demo - use Supabase in production)
+    uploaded_images[image_id] = {
+        "content": content,
+        "content_type": content_type,
+        "filename": file.filename,
+        "created_at": datetime.utcnow().isoformat()
+    }
+
+    # If Supabase is configured, upload there
+    image_url = f"/api/image/{image_id}"
+
+    if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+        try:
+            async with httpx.AsyncClient() as client:
+                file_path = f"patagon3d/{image_id}.jpg"
+                response = await client.post(
+                    f"{SUPABASE_URL}/storage/v1/object/visualizer-images/{file_path}",
+                    headers={
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                        "Content-Type": content_type
+                    },
+                    content=content
+                )
+                if response.status_code in [200, 201]:
+                    image_url = f"{SUPABASE_URL}/storage/v1/object/public/visualizer-images/{file_path}"
+        except Exception as e:
+            print(f"Supabase upload error: {e}")
 
     return {
-        "job_id": job_id,
-        "status": "completed",
-        "message": "Video received. Loading interactive demo kitchen with measurement tools.",
-        "note": "For actual video-to-3D scanning, use Luma AI iOS app to capture and export GLB models."
+        "success": True,
+        "image_id": image_id,
+        "url": image_url,
+        "filename": file.filename
     }
 
 
-# ============================================================================
-# LUMA DREAM MACHINE API - AI Renovation Video Generation
-# ============================================================================
+@app.get("/api/image/{image_id}")
+async def get_image(image_id: str):
+    """Serve uploaded image from memory"""
+    if image_id not in uploaded_images:
+        raise HTTPException(status_code=404, detail="Image not found")
 
-@app.post("/api/generate-video")
-async def generate_renovation_video(background_tasks: BackgroundTasks, request: VideoGenerationRequest):
-    """
-    Generate AI renovation visualization video using Luma Dream Machine API.
-    Creates a cinematic walkthrough video of the proposed renovation.
-    """
-    if not LUMA_API_KEY:
-        raise HTTPException(status_code=500, detail="Luma API key not configured")
-
-    job_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
-
-    # Create the video generation prompt
-    full_prompt = f"""Cinematic interior design video walkthrough of a beautiful kitchen renovation.
-    Element focus: {request.element_type}.
-    Design details: {request.prompt}.
-    Style: {request.style}.
-    Professional real estate video quality, smooth camera movement, natural lighting,
-    high-end finishes, magazine-worthy interior design."""
-
-    video_jobs[job_id] = VideoJob(
-        job_id=job_id,
-        status="processing",
-        prompt=full_prompt,
-        created_at=now
+    image_data = uploaded_images[image_id]
+    return JSONResponse(
+        content={"error": "Use direct URL"},
+        status_code=302,
+        headers={"Location": f"data:{image_data['content_type']};base64,{base64.b64encode(image_data['content']).decode()}"}
     )
 
-    background_tasks.add_task(process_luma_video_generation, job_id, full_prompt)
 
-    return {"job_id": job_id, "status": "processing", "message": "Generating AI renovation video..."}
+# ============================================================================
+# AI MEASUREMENT ANALYSIS (GPT-4 Vision)
+# ============================================================================
 
-
-async def process_luma_video_generation(job_id: str, prompt: str):
-    """Generate video using Luma Dream Machine API"""
-    try:
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            headers = {
-                "Authorization": f"Bearer {LUMA_API_KEY}",
-                "Content-Type": "application/json"
-            }
-
-            # Create video generation request
-            # Using ray-2 model for high quality video generation
-            response = await client.post(
-                f"{LUMA_API_BASE}/generations",
-                headers=headers,
-                json={
-                    "model": "ray-2",
-                    "prompt": prompt,
-                    "aspect_ratio": "16:9",
-                    "loop": False
-                }
-            )
-
-            if response.status_code in [200, 201, 202]:
-                result = response.json()
-                generation_id = result.get("id")
-                video_jobs[job_id].luma_generation_id = generation_id
-
-                # Poll for completion
-                await poll_luma_video_status(job_id, generation_id, client, headers)
-            else:
-                video_jobs[job_id].status = "failed"
-                video_jobs[job_id].error = f"Luma API error: {response.status_code} - {response.text}"
-
-    except Exception as e:
-        video_jobs[job_id].status = "failed"
-        video_jobs[job_id].error = str(e)
-
-
-async def poll_luma_video_status(job_id: str, generation_id: str, client: httpx.AsyncClient, headers: dict):
-    """Poll Luma Dream Machine API for video generation completion"""
-    max_attempts = 60  # 5 minutes max
-    attempt = 0
-
-    while attempt < max_attempts:
-        try:
-            response = await client.get(
-                f"{LUMA_API_BASE}/generations/{generation_id}",
-                headers=headers
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                state = result.get("state") or result.get("status")
-
-                if state in ["completed", "complete", "done"]:
-                    # Get the video URL
-                    assets = result.get("assets", {})
-                    video_url = assets.get("video") or result.get("video", {}).get("url")
-                    thumbnail_url = assets.get("thumbnail") or result.get("thumbnail", {}).get("url")
-
-                    video_jobs[job_id].status = "completed"
-                    video_jobs[job_id].video_url = video_url
-                    video_jobs[job_id].thumbnail_url = thumbnail_url
-                    return
-
-                elif state in ["failed", "error"]:
-                    video_jobs[job_id].status = "failed"
-                    video_jobs[job_id].error = result.get("failure_reason") or "Video generation failed"
-                    return
-
-        except Exception as e:
-            print(f"Poll error: {e}")
-
-        attempt += 1
-        await asyncio.sleep(5)
-
-    video_jobs[job_id].status = "failed"
-    video_jobs[job_id].error = "Video generation timeout"
-
-
-@app.get("/api/video/{job_id}")
-async def get_video_status(job_id: str):
-    """Get AI video generation job status"""
-    if job_id not in video_jobs:
-        raise HTTPException(status_code=404, detail="Video job not found")
-    return video_jobs[job_id]
-
-
-@app.get("/api/job/{job_id}")
-async def get_job_status(job_id: str):
-    """Get the status of a processing job"""
-    if job_id not in jobs_store:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return jobs_store[job_id]
-
-
-@app.get("/api/jobs")
-async def list_jobs():
-    """List all jobs"""
-    return list(jobs_store.values())
-
-
-class RenovationJob(BaseModel):
-    job_id: str
-    status: str
-    prompt: str
-    element_type: str
-    images: list = []
-    error: Optional[str] = None
-    created_at: str
-
-
-@app.post("/api/renovate")
-async def generate_renovation(background_tasks: BackgroundTasks, request: RenovationRequest):
+@app.post("/api/analyze-measurements")
+async def analyze_measurements(background_tasks: BackgroundTasks, request: MeasurementRequest):
     """
-    Generate AI renovation proposals using OpenAI DALL-E 3
+    Analyze a room photo using GPT-4 Vision to estimate measurements
+    Recognizes surfaces, dimensions, and provides estimates
     """
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="OpenAI API key not configured")
@@ -280,75 +177,306 @@ async def generate_renovation(background_tasks: BackgroundTasks, request: Renova
     job_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
 
-    renovation_jobs[job_id] = RenovationJob(
+    measurement_jobs[job_id] = MeasurementResult(
         job_id=job_id,
         status="processing",
-        prompt=request.prompt,
-        element_type=request.element_type,
+        image_url=request.image_url,
         created_at=now
     )
 
-    background_tasks.add_task(generate_renovation_images, job_id, request.prompt, request.element_type)
+    background_tasks.add_task(process_measurement_analysis, job_id, request.image_url, request.room_type)
 
-    return {"job_id": job_id, "status": "processing", "message": "Generating renovation proposals..."}
+    return {"job_id": job_id, "status": "processing", "message": "Analyzing image for measurements..."}
 
 
-async def generate_renovation_images(job_id: str, prompt: str, element_type: str):
-    """Generate renovation images using DALL-E 3"""
+async def process_measurement_analysis(job_id: str, image_url: str, room_type: str):
+    """Use GPT-4 Vision to analyze room and estimate measurements"""
     try:
+        # Get image as base64
+        image_base64 = await get_image_base64(image_url)
+
         async with httpx.AsyncClient(timeout=120.0) as client:
-            headers = {
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "Content-Type": "application/json"
-            }
+            # GPT-4 Vision analysis prompt
+            analysis_prompt = f"""Analyze this {room_type} photo and provide detailed measurements and estimates.
 
-            # Create detailed renovation prompt
-            full_prompt = f"""Professional interior design photo of a kitchen renovation featuring {element_type}.
-            Design details: {prompt}.
-            High-end architectural photography, natural lighting, realistic materials and textures,
-            magazine-quality interior design photography, 8k resolution."""
+You are an expert contractor estimator. Analyze the image and provide:
 
-            images = []
-            # Generate 3 design options
-            style_variants = [
-                "bright and airy modern style",
-                "warm and cozy transitional style",
-                "sleek contemporary luxury style"
-            ]
+1. **Room Dimensions** (estimate based on standard fixtures as reference):
+   - Approximate length and width in feet
+   - Ceiling height estimate
+   - Total square footage
 
-            for i, style in enumerate(style_variants):
-                variant_prompt = f"{full_prompt} Style: {style}"
+2. **Surface Measurements** (for {room_type}):
+   - Countertop linear feet and square footage (if visible)
+   - Cabinet linear feet (upper and lower separately)
+   - Backsplash square footage
+   - Floor area visible
+   - Wall area visible
 
-                response = await client.post(
-                    f"{OPENAI_API_BASE}/images/generations",
-                    headers=headers,
-                    json={
-                        "model": "dall-e-3",
-                        "prompt": variant_prompt,
-                        "n": 1,
-                        "size": "1024x1024",
-                        "quality": "standard"
+3. **Fixture Identification**:
+   - List all visible fixtures (sink, stove, fridge, etc.)
+   - Note their approximate sizes
+
+4. **Reference Points Used**:
+   - What standard items did you use to estimate scale?
+   - (e.g., standard cabinet height 34.5", standard countertop depth 25")
+
+Provide measurements in feet and inches format (e.g., 12' 6").
+If uncertain, provide a range (e.g., 10-12 feet).
+
+Return as JSON with this structure:
+{{
+  "room_dimensions": {{
+    "length_ft": number,
+    "width_ft": number,
+    "height_ft": number,
+    "total_sqft": number
+  }},
+  "surfaces": {{
+    "countertop_linear_ft": number,
+    "countertop_sqft": number,
+    "upper_cabinets_linear_ft": number,
+    "lower_cabinets_linear_ft": number,
+    "backsplash_sqft": number,
+    "floor_sqft": number
+  }},
+  "fixtures": [
+    {{"name": "string", "size": "string"}}
+  ],
+  "confidence": "high|medium|low",
+  "notes": "string with any important observations"
+}}"""
+
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "gpt-4o",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": analysis_prompt},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{image_base64}",
+                                        "detail": "high"
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "max_tokens": 2000
+                }
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
+
+                # Parse JSON from response
+                import json
+                try:
+                    # Extract JSON from response (may be wrapped in markdown)
+                    if "```json" in content:
+                        json_str = content.split("```json")[1].split("```")[0].strip()
+                    elif "```" in content:
+                        json_str = content.split("```")[1].split("```")[0].strip()
+                    else:
+                        json_str = content
+
+                    measurements = json.loads(json_str)
+                except:
+                    measurements = {"raw_analysis": content}
+
+                measurement_jobs[job_id].status = "completed"
+                measurement_jobs[job_id].measurements = measurements
+            else:
+                measurement_jobs[job_id].status = "failed"
+                measurement_jobs[job_id].error = f"OpenAI API error: {response.status_code}"
+
+    except Exception as e:
+        measurement_jobs[job_id].status = "failed"
+        measurement_jobs[job_id].error = str(e)
+
+
+@app.get("/api/measurements/{job_id}")
+async def get_measurement_status(job_id: str):
+    """Get measurement analysis results"""
+    if job_id not in measurement_jobs:
+        raise HTTPException(status_code=404, detail="Measurement job not found")
+    return measurement_jobs[job_id]
+
+
+# ============================================================================
+# AI RENOVATION (Google Vertex AI Imagen 3.0 - Image-to-Image)
+# ============================================================================
+
+@app.post("/api/renovate")
+async def generate_renovation(background_tasks: BackgroundTasks, request: RenovationRequest):
+    """
+    Generate AI renovation by modifying the REAL uploaded photo
+    Uses Google Vertex AI Imagen 3.0 for image-to-image transformation
+    """
+    if not GOOGLE_CLOUD_API_KEY:
+        raise HTTPException(status_code=500, detail="Google Cloud API key not configured")
+
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    renovation_jobs[job_id] = RenovationResult(
+        job_id=job_id,
+        status="processing",
+        original_url=request.image_url,
+        created_at=now
+    )
+
+    background_tasks.add_task(
+        process_renovation,
+        job_id,
+        request.image_url,
+        request.element_type,
+        request.style,
+        request.color,
+        request.material,
+        request.description
+    )
+
+    return {"job_id": job_id, "status": "processing", "message": "Generating AI renovation..."}
+
+
+async def process_renovation(
+    job_id: str,
+    image_url: str,
+    element_type: str,
+    style: str,
+    color: Optional[str],
+    material: Optional[str],
+    description: Optional[str]
+):
+    """
+    Use Google Vertex AI Imagen 3.0 to modify the real photo
+    Same approach as land-roof-measure project
+    """
+    try:
+        # Get image as base64
+        image_base64 = await get_image_base64(image_url)
+
+        # Build the modification prompt based on element type
+        preserve_clause = "DO NOT change any other elements in the room. Keep walls, windows, doors, ceiling, lighting, and all other fixtures exactly the same."
+
+        if element_type == "cabinets":
+            color_desc = color or "white"
+            style_desc = style or "modern shaker"
+            prompt = f"Edit this kitchen photo: replace ONLY the kitchen cabinets with {color_desc} {style_desc} style cabinets. {preserve_clause}"
+
+        elif element_type == "countertops":
+            material_desc = material or "quartz"
+            color_desc = color or "white with gray veining"
+            prompt = f"Edit this kitchen photo: replace ONLY the countertops with {color_desc} {material_desc} countertops. {preserve_clause}"
+
+        elif element_type == "backsplash":
+            material_desc = material or "subway tile"
+            color_desc = color or "white"
+            prompt = f"Edit this kitchen photo: replace ONLY the backsplash with {color_desc} {material_desc}. {preserve_clause}"
+
+        elif element_type == "flooring":
+            material_desc = material or "hardwood"
+            color_desc = color or "medium oak"
+            prompt = f"Edit this kitchen photo: replace ONLY the floor with {color_desc} {material_desc} flooring with visible wood grain. {preserve_clause}"
+
+        elif element_type == "appliances":
+            style_desc = style or "stainless steel"
+            prompt = f"Edit this kitchen photo: replace ONLY the visible appliances with modern {style_desc} appliances. {preserve_clause}"
+
+        else:
+            # Custom description
+            prompt = f"Edit this room photo: {description or 'modernize the space'}. {preserve_clause}"
+
+        # Add style enhancement
+        style_additions = {
+            "modern": "Clean lines, minimalist hardware, contemporary fixtures.",
+            "farmhouse": "Rustic wood elements, vintage-inspired hardware, warm tones.",
+            "transitional": "Blend of traditional and modern, neutral palette, classic shapes.",
+            "contemporary": "Bold design, luxury materials, high-end finishes."
+        }
+        if style in style_additions:
+            prompt += f" Style: {style_additions[style]}"
+
+        renovation_jobs[job_id].prompt_used = prompt
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            # Call Google Vertex AI Imagen 3.0
+            imagen_url = f"https://{GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/{GOOGLE_CLOUD_PROJECT_ID}/locations/{GOOGLE_CLOUD_LOCATION}/publishers/google/models/imagen-3.0-capability-001:predict?key={GOOGLE_CLOUD_API_KEY}"
+
+            response = await client.post(
+                imagen_url,
+                headers={"Content-Type": "application/json"},
+                json={
+                    "instances": [
+                        {
+                            "prompt": prompt,
+                            "referenceImages": [
+                                {
+                                    "referenceType": "REFERENCE_TYPE_RAW",
+                                    "referenceId": 1,
+                                    "referenceImage": {
+                                        "bytesBase64Encoded": image_base64
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "parameters": {
+                        "sampleCount": 1
                     }
-                )
+                }
+            )
 
-                if response.status_code == 200:
-                    result = response.json()
-                    if result.get("data") and len(result["data"]) > 0:
-                        images.append({
-                            "url": result["data"][0].get("url"),
-                            "style": style,
-                            "revised_prompt": result["data"][0].get("revised_prompt", "")
-                        })
+            if response.status_code == 200:
+                result = response.json()
+                generated_base64 = result["predictions"][0]["bytesBase64Encoded"]
 
-            renovation_jobs[job_id].images = images
-            renovation_jobs[job_id].status = "completed"
+                # Store generated image
+                generated_url = f"data:image/jpeg;base64,{generated_base64}"
+
+                # Try to upload to Supabase for permanent storage
+                if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+                    try:
+                        generated_bytes = base64.b64decode(generated_base64)
+                        file_path = f"patagon3d/generated/{job_id}.jpg"
+
+                        upload_response = await client.post(
+                            f"{SUPABASE_URL}/storage/v1/object/visualizer-images/{file_path}",
+                            headers={
+                                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                                "Content-Type": "image/jpeg"
+                            },
+                            content=generated_bytes
+                        )
+
+                        if upload_response.status_code in [200, 201]:
+                            generated_url = f"{SUPABASE_URL}/storage/v1/object/public/visualizer-images/{file_path}"
+                    except Exception as e:
+                        print(f"Supabase upload error: {e}")
+
+                renovation_jobs[job_id].status = "completed"
+                renovation_jobs[job_id].generated_url = generated_url
+            else:
+                error_text = response.text
+                renovation_jobs[job_id].status = "failed"
+                renovation_jobs[job_id].error = f"Imagen API error: {response.status_code} - {error_text}"
 
     except Exception as e:
         renovation_jobs[job_id].status = "failed"
         renovation_jobs[job_id].error = str(e)
 
 
-@app.get("/api/renovate/{job_id}")
+@app.get("/api/renovation/{job_id}")
 async def get_renovation_status(job_id: str):
     """Get renovation job status and results"""
     if job_id not in renovation_jobs:
@@ -356,33 +484,57 @@ async def get_renovation_status(job_id: str):
     return renovation_jobs[job_id]
 
 
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+async def get_image_base64(image_url: str) -> str:
+    """Get image as base64 string from URL or memory"""
+
+    # Check if it's a local image ID
+    if image_url.startswith("/api/image/"):
+        image_id = image_url.split("/")[-1]
+        if image_id in uploaded_images:
+            return base64.b64encode(uploaded_images[image_id]["content"]).decode()
+
+    # Check if it's already base64
+    if image_url.startswith("data:"):
+        return image_url.split(",")[1]
+
+    # Fetch from URL
+    async with httpx.AsyncClient() as client:
+        response = await client.get(image_url)
+        if response.status_code == 200:
+            return base64.b64encode(response.content).decode()
+        raise Exception(f"Failed to fetch image: {response.status_code}")
+
+
+# ============================================================================
+# HEALTH & CONFIG
+# ============================================================================
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
         "service": "Patagon3d",
-        "luma_configured": bool(LUMA_API_KEY),
-        "openai_configured": bool(OPENAI_API_KEY)
+        "google_imagen_configured": bool(GOOGLE_CLOUD_API_KEY),
+        "openai_configured": bool(OPENAI_API_KEY),
+        "supabase_configured": bool(SUPABASE_URL)
     }
 
 
-# Demo endpoint to test 3D viewer without Luma
-@app.post("/api/demo-scan")
-async def create_demo_scan():
-    """Create a demo scan that loads the built-in demo room"""
-    job_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
-
-    jobs_store[job_id] = JobStatus(
-        job_id=job_id,
-        status="completed",
-        model_url=None,  # None triggers demo mode
-        created_at=now,
-        updated_at=now
-    )
-
-    return {"job_id": job_id, "status": "completed", "message": "Demo scan created"}
+@app.get("/api/config")
+async def get_config():
+    """Get client-side configuration"""
+    return {
+        "features": {
+            "measurements": bool(OPENAI_API_KEY),
+            "renovation": bool(GOOGLE_CLOUD_API_KEY),
+            "storage": bool(SUPABASE_URL)
+        }
+    }
 
 
 if __name__ == "__main__":
