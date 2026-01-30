@@ -374,35 +374,69 @@ class Patagon3d {
 
         const generateBtn = document.getElementById('generate-design');
         generateBtn.disabled = true;
-        generateBtn.innerHTML = '<div class="spinner" style="width:24px;height:24px;margin:0"></div> Generating...';
+        generateBtn.innerHTML = '<div class="spinner" style="width:24px;height:24px;margin:0"></div> Generating AI designs...';
 
         try {
             const response = await fetch('/api/renovate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model_url: this.modelUrl,
+                    model_url: this.modelUrl || '',
                     prompt: prompt,
                     element_type: this.selectedElements.join(',')
                 })
             });
 
             const data = await response.json();
-            this.showToast('Design generation started!', 'success');
 
-            // Show placeholder results for now
-            this.showDesignResults([
-                { title: 'Option 1 - Modern White', description: prompt.substring(0, 50) + '...' },
-                { title: 'Option 2 - Contemporary', description: 'Alternative interpretation...' },
-                { title: 'Option 3 - Premium', description: 'Luxury materials...' }
-            ]);
+            if (data.job_id) {
+                this.showToast('AI generating your renovation designs...', 'success');
+                this.pollRenovationStatus(data.job_id, generateBtn);
+            } else {
+                throw new Error(data.detail || 'Failed to start generation');
+            }
 
         } catch (error) {
             console.error('Generate error:', error);
-            this.showToast('Generation failed', 'error');
-        } finally {
+            this.showToast(error.message || 'Generation failed', 'error');
             generateBtn.disabled = false;
             generateBtn.innerHTML = '<span class="btn-icon">✨</span> Generate AI Renovation';
+        }
+    }
+
+    async pollRenovationStatus(jobId, generateBtn) {
+        try {
+            const response = await fetch(`/api/renovate/${jobId}`);
+            const job = await response.json();
+
+            if (job.status === 'completed') {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<span class="btn-icon">✨</span> Generate AI Renovation';
+
+                if (job.images && job.images.length > 0) {
+                    this.showDesignResults(job.images.map((img, i) => ({
+                        title: `Option ${i + 1} - ${img.style}`,
+                        description: img.revised_prompt?.substring(0, 100) || job.prompt,
+                        imageUrl: img.url
+                    })));
+                    this.showToast('AI renovation designs ready!', 'success');
+                } else {
+                    this.showToast('No images generated', 'error');
+                }
+
+            } else if (job.status === 'failed') {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<span class="btn-icon">✨</span> Generate AI Renovation';
+                this.showToast(`Generation failed: ${job.error}`, 'error');
+
+            } else {
+                // Still processing - poll again
+                setTimeout(() => this.pollRenovationStatus(jobId, generateBtn), 3000);
+            }
+
+        } catch (error) {
+            console.error('Poll renovation error:', error);
+            setTimeout(() => this.pollRenovationStatus(jobId, generateBtn), 5000);
         }
     }
 
@@ -412,9 +446,12 @@ class Patagon3d {
 
         grid.innerHTML = proposals.map((p, i) => `
             <div class="proposal-card">
-                <div style="height:200px;background:linear-gradient(135deg,#334155,#1e293b);display:flex;align-items:center;justify-content:center;font-size:48px;">
-                    ${['🏠', '✨', '💎'][i]}
-                </div>
+                ${p.imageUrl
+                    ? `<img src="${p.imageUrl}" alt="${p.title}" style="width:100%;height:250px;object-fit:cover;">`
+                    : `<div style="height:200px;background:linear-gradient(135deg,#334155,#1e293b);display:flex;align-items:center;justify-content:center;font-size:48px;">
+                        ${['🏠', '✨', '💎'][i]}
+                       </div>`
+                }
                 <div class="proposal-info">
                     <h4>${p.title}</h4>
                     <p>${p.description}</p>

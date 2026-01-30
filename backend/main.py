@@ -32,6 +32,13 @@ app.add_middleware(
 LUMA_API_KEY = os.environ.get("LUMA_API_KEY", "")
 LUMA_API_BASE = "https://api.lumalabs.ai/dream-machine/v1"
 
+# OpenAI Configuration for AI Renovation
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OPENAI_API_BASE = "https://api.openai.com/v1"
+
+# Renovation jobs store
+renovation_jobs = {}
+
 # Store job statuses in memory (use Redis in production)
 jobs_store = {}
 
@@ -224,20 +231,101 @@ async def list_jobs():
     return list(jobs_store.values())
 
 
+class RenovationJob(BaseModel):
+    job_id: str
+    status: str
+    prompt: str
+    element_type: str
+    images: list = []
+    error: Optional[str] = None
+    created_at: str
+
+
 @app.post("/api/renovate")
-async def generate_renovation(request: RenovationRequest):
+async def generate_renovation(background_tasks: BackgroundTasks, request: RenovationRequest):
     """
-    Generate AI renovation proposals using the 3D model
-    This will use image generation to create renovation visualizations
+    Generate AI renovation proposals using OpenAI DALL-E 3
     """
-    # This endpoint will integrate with Stable Diffusion or similar
-    # For now, return a placeholder
-    return {
-        "status": "processing",
-        "message": "Renovation generation started",
-        "prompt": request.prompt,
-        "element_type": request.element_type
-    }
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    renovation_jobs[job_id] = RenovationJob(
+        job_id=job_id,
+        status="processing",
+        prompt=request.prompt,
+        element_type=request.element_type,
+        created_at=now
+    )
+
+    background_tasks.add_task(generate_renovation_images, job_id, request.prompt, request.element_type)
+
+    return {"job_id": job_id, "status": "processing", "message": "Generating renovation proposals..."}
+
+
+async def generate_renovation_images(job_id: str, prompt: str, element_type: str):
+    """Generate renovation images using DALL-E 3"""
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            headers = {
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json"
+            }
+
+            # Create detailed renovation prompt
+            full_prompt = f"""Professional interior design photo of a kitchen renovation featuring {element_type}.
+            Design details: {prompt}.
+            High-end architectural photography, natural lighting, realistic materials and textures,
+            magazine-quality interior design photography, 8k resolution."""
+
+            images = []
+            # Generate 3 design options
+            for i in range(3):
+                style_variants = [
+                    "bright and airy modern style",
+                    "warm and cozy transitional style",
+                    "sleek contemporary luxury style"
+                ]
+
+                variant_prompt = f"{full_prompt} Style: {style_variants[i]}"
+
+                response = await client.post(
+                    f"{OPENAI_API_BASE}/images/generations",
+                    headers=headers,
+                    json={
+                        "model": "dall-e-3",
+                        "prompt": variant_prompt,
+                        "n": 1,
+                        "size": "1024x1024",
+                        "quality": "standard"
+                    }
+                )
+
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("data") and len(result["data"]) > 0:
+                        images.append({
+                            "url": result["data"][0].get("url"),
+                            "style": style_variants[i],
+                            "revised_prompt": result["data"][0].get("revised_prompt", "")
+                        })
+
+            renovation_jobs[job_id].images = images
+            renovation_jobs[job_id].status = "completed"
+
+    except Exception as e:
+        renovation_jobs[job_id].status = "failed"
+        renovation_jobs[job_id].error = str(e)
+
+
+@app.get("/api/renovate/{job_id}")
+async def get_renovation_status(job_id: str):
+    """Get renovation job status and results"""
+    if job_id not in renovation_jobs:
+        raise HTTPException(status_code=404, detail="Renovation job not found")
+    return renovation_jobs[job_id]
 
 
 @app.get("/api/health")
@@ -246,7 +334,8 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Patagon3d",
-        "luma_configured": bool(LUMA_API_KEY)
+        "luma_configured": bool(LUMA_API_KEY),
+        "openai_configured": bool(OPENAI_API_KEY)
     }
 
 
