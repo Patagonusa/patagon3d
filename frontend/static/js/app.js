@@ -189,11 +189,30 @@ function initializeLanguage() {
     applyTranslations(currentLang);
     updateLanguageButtons();
 
+    // Language button click handlers
+    const langEn = document.getElementById('lang-en');
+    const langEs = document.getElementById('lang-es');
+
+    if (langEn) {
+        langEn.onclick = function(e) {
+            e.preventDefault();
+            setLanguage('en');
+        };
+    }
+
+    if (langEs) {
+        langEs.onclick = function(e) {
+            e.preventDefault();
+            setLanguage('es');
+        };
+    }
+
+    // Fallback for querySelectorAll
     document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            const lang = btn.dataset.lang;
+            const lang = this.getAttribute('data-lang');
             if (lang) {
                 setLanguage(lang);
             }
@@ -257,17 +276,12 @@ async function initializeUser() {
 }
 
 function initializeUserMenu() {
-    const menuBtn = document.getElementById('user-menu-btn');
-    const dropdown = document.getElementById('user-dropdown');
-
-    if (menuBtn && dropdown) {
-        menuBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdown.classList.toggle('show');
-        });
-
-        document.addEventListener('click', () => {
-            dropdown.classList.remove('show');
+    // Logout button handler
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
         });
     }
 }

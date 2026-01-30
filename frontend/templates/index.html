@@ -18,19 +18,16 @@
                 <div class="header-controls">
                     <!-- Language Selector -->
                     <div class="language-selector">
-                        <button class="lang-btn active" data-lang="en">EN</button>
-                        <button class="lang-btn" data-lang="es">ES</button>
+                        <button type="button" class="lang-btn active" data-lang="en" id="lang-en">EN</button>
+                        <button type="button" class="lang-btn" data-lang="es" id="lang-es">ES</button>
                     </div>
-                    <!-- User Menu -->
-                    <div class="user-menu">
-                        <button class="user-btn" id="user-menu-btn">
-                            <span class="user-icon">👤</span>
-                            <span class="user-name" id="user-name">User</span>
-                        </button>
-                        <div class="user-dropdown" id="user-dropdown">
-                            <a href="/admin" class="dropdown-item admin-link" id="admin-link">Admin Panel</a>
-                            <button class="dropdown-item" onclick="logout()">Logout</button>
-                        </div>
+                    <!-- Admin Link (visible to admins) -->
+                    <a href="/admin" class="admin-btn" id="admin-link" style="display: none;">Admin</a>
+                    <!-- User Info -->
+                    <div class="user-info">
+                        <span class="user-icon">👤</span>
+                        <span class="user-name" id="user-name">User</span>
+                        <button type="button" class="logout-btn" id="logout-btn">Logout</button>
                     </div>
                 </div>
             </div>
