@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Patagon3d - AI Renovation Visualizer</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <!-- Three.js for 3D viewing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🏠</span>
+                <h1>Patagon3d</h1>
+            </div>
+            <p class="tagline">AI Renovation Visualizer</p>
+            <p class="company">Hello Projects Pro | CSLB #1135440</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Step 1: Upload Video -->
+            <section id="upload-section" class="section active">
+                <div class="section-header">
+                    <span class="step-number">1</span>
+                    <h2>Capture Your Space</h2>
+                </div>
+                <p class="instruction">Record a video walking around your kitchen or room. Move slowly and capture all angles.</p>
+
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">📹</div>
+                    <p>Tap to record or select video</p>
+                    <input type="file" id="video-input" accept="video/*" capture="environment">
+                </div>
+
+                <div id="video-preview" class="video-preview hidden">
+                    <video id="preview-video" controls></video>
+                    <button id="upload-btn" class="btn btn-primary">
+                        <span class="btn-icon">☁️</span>
+                        Upload & Create 3D Model
+                    </button>
+                </div>
+
+                <div id="upload-progress" class="progress-container hidden">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <p id="progress-text">Uploading...</p>
+                </div>
+            </section>
+
+            <!-- Step 2: View 3D Model -->
+            <section id="model-section" class="section hidden">
+                <div class="section-header">
+                    <span class="step-number">2</span>
+                    <h2>Your 3D Model</h2>
+                </div>
+
+                <div class="model-viewer-container">
+                    <div id="model-viewer" class="model-viewer"></div>
+                    <div class="viewer-controls">
+                        <button class="control-btn" id="rotate-btn" title="Auto Rotate">🔄</button>
+                        <button class="control-btn" id="measure-btn" title="Measure">📏</button>
+                        <button class="control-btn" id="reset-btn" title="Reset View">🎯</button>
+                    </div>
+                </div>
+
+                <div id="measurement-panel" class="measurement-panel hidden">
+                    <h3>Measurements</h3>
+                    <p class="measure-instruction">Click two points to measure distance</p>
+                    <div id="measurements-list"></div>
+                </div>
+
+                <button id="continue-to-design" class="btn btn-primary">
+                    <span class="btn-icon">🎨</span>
+                    Continue to AI Design
+                </button>
+            </section>
+
+            <!-- Step 3: AI Renovation -->
+            <section id="design-section" class="section hidden">
+                <div class="section-header">
+                    <span class="step-number">3</span>
+                    <h2>AI Renovation Proposals</h2>
+                </div>
+
+                <div class="design-options">
+                    <div class="option-group">
+                        <label>What would you like to change?</label>
+                        <div class="element-buttons">
+                            <button class="element-btn" data-element="cabinets">🗄️ Cabinets</button>
+                            <button class="element-btn" data-element="countertops">⬛ Countertops</button>
+                            <button class="element-btn" data-element="backsplash">🧱 Backsplash</button>
+                            <button class="element-btn" data-element="flooring">🟫 Flooring</button>
+                            <button class="element-btn" data-element="appliances">🍳 Appliances</button>
+                            <button class="element-btn" data-element="lighting">💡 Lighting</button>
+                        </div>
+                    </div>
+
+                    <div class="option-group">
+                        <label>Describe your vision</label>
+                        <textarea id="design-prompt" placeholder="e.g., Modern white shaker cabinets with brushed gold hardware, marble countertops..."></textarea>
+                    </div>
+
+                    <div class="style-presets">
+                        <p>Quick styles:</p>
+                        <div class="preset-buttons">
+                            <button class="preset-btn" data-preset="modern">Modern Minimalist</button>
+                            <button class="preset-btn" data-preset="farmhouse">Farmhouse Rustic</button>
+                            <button class="preset-btn" data-preset="transitional">Transitional</button>
+                            <button class="preset-btn" data-preset="contemporary">Contemporary Luxury</button>
+                        </div>
+                    </div>
+
+                    <button id="generate-design" class="btn btn-primary btn-large">
+                        <span class="btn-icon">✨</span>
+                        Generate AI Renovation
+                    </button>
+                </div>
+
+                <div id="ai-results" class="ai-results hidden">
+                    <h3>Your Renovation Proposals</h3>
+                    <div id="proposals-grid" class="proposals-grid"></div>
+                </div>
+            </section>
+
+            <!-- Jobs History -->
+            <section id="history-section" class="section">
+                <div class="section-header">
+                    <h2>Recent Scans</h2>
+                </div>
+                <div id="jobs-list" class="jobs-list"></div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 Hello Projects Pro | Patagon3d</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
