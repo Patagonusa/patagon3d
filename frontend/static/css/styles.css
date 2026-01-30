@@ -1,4 +1,5 @@
 /* Patagon3d - Mobile-First Styles */
+/* Corporate Colors: Patagon Consulting Blue Theme */
 
 * {
     margin: 0;
@@ -7,27 +8,52 @@
 }
 
 :root {
-    --primary: #2563eb;
-    --primary-dark: #1d4ed8;
-    --secondary: #10b981;
-    --accent: #f59e0b;
-    --bg-dark: #0f172a;
-    --bg-card: #1e293b;
-    --bg-input: #334155;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --border: #475569;
-    --success: #22c55e;
-    --error: #ef4444;
-    --warning: #f59e0b;
+    /* Patagon Corporate Blues */
+    --primary: #2b6cb0;
+    --primary-dark: #1a365d;
+    --primary-light: #4299e1;
+    --sky-blue: #63b3ed;
+    --secondary: #90cdf4;
+    --accent: #bee3f8;
+
+    /* Backgrounds with blue tones */
+    --bg-dark: #0c1929;
+    --bg-card: rgba(26, 54, 93, 0.85);
+    --bg-input: rgba(43, 108, 176, 0.3);
+    --bg-overlay: rgba(12, 25, 41, 0.7);
+
+    /* Text */
+    --text-primary: #ffffff;
+    --text-secondary: #bee3f8;
+    --border: #4299e1;
+
+    /* Status colors */
+    --success: #48bb78;
+    --error: #fc8181;
+    --warning: #f6e05e;
 }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     background: var(--bg-dark);
+    background-image: url('/static/images/background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
     color: var(--text-primary);
     min-height: 100vh;
     line-height: 1.5;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(12, 25, 41, 0.6) 0%, rgba(26, 54, 93, 0.8) 100%);
+    z-index: -1;
 }
 
 .app-container {
@@ -38,9 +64,11 @@ body {
 
 /* Header */
 .header {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    padding: 24px 20px;
+    background: linear-gradient(135deg, rgba(26, 54, 93, 0.95) 0%, rgba(12, 25, 41, 0.98) 100%);
+    padding: 20px;
     text-align: center;
+    border-bottom: 3px solid var(--primary-light);
+    backdrop-filter: blur(10px);
 }
 
 .logo {
@@ -51,25 +79,46 @@ body {
     margin-bottom: 8px;
 }
 
+.logo-image {
+    height: 80px;
+    width: auto;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
 .logo-icon {
     font-size: 32px;
+    display: none;
 }
 
 .logo h1 {
     font-size: 28px;
     font-weight: 700;
     letter-spacing: -0.5px;
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.app-title {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-primary);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    margin-top: 10px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
 }
 
 .tagline {
     font-size: 16px;
-    opacity: 0.9;
+    color: var(--sky-blue);
     margin-bottom: 4px;
+    font-weight: 500;
 }
 
 .company {
     font-size: 12px;
-    opacity: 0.7;
+    color: var(--secondary);
 }
 
 /* Main Content */
@@ -83,6 +132,9 @@ body {
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(66, 153, 225, 0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .section.hidden {
@@ -97,7 +149,7 @@ body {
 }
 
 .step-number {
-    background: var(--primary);
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
     color: white;
     width: 32px;
     height: 32px;
@@ -107,6 +159,7 @@ body {
     justify-content: center;
     font-weight: 700;
     font-size: 16px;
+    box-shadow: 0 2px 8px rgba(66, 153, 225, 0.4);
 }
 
 .section-header h2 {
@@ -122,19 +175,21 @@ body {
 
 /* Upload Area */
 .upload-area {
-    border: 2px dashed var(--border);
+    border: 2px dashed var(--sky-blue);
     border-radius: 12px;
     padding: 40px 20px;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
+    background: rgba(43, 108, 176, 0.1);
 }
 
 .upload-area:hover,
 .upload-area:focus-within {
-    border-color: var(--primary);
-    background: rgba(37, 99, 235, 0.1);
+    border-color: var(--primary-light);
+    background: rgba(66, 153, 225, 0.2);
+    box-shadow: 0 0 20px rgba(66, 153, 225, 0.3);
 }
 
 .upload-area input[type="file"] {
@@ -189,13 +244,16 @@ body {
 }
 
 .btn-primary {
-    background: var(--primary);
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
     color: white;
+    border: 1px solid var(--sky-blue);
+    box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
 }
 
 .btn-primary:hover {
-    background: var(--primary-dark);
-    transform: translateY(-1px);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(66, 153, 225, 0.4);
 }
 
 .btn-primary:disabled {
@@ -232,9 +290,10 @@ body {
 
 .progress-fill {
     height: 100%;
-    background: var(--primary);
+    background: linear-gradient(90deg, var(--primary) 0%, var(--sky-blue) 100%);
     width: 0%;
     transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(99, 179, 237, 0.5);
 }
 
 #progress-text {
@@ -551,7 +610,9 @@ body {
     text-align: center;
     padding: 20px;
     font-size: 12px;
-    color: var(--text-secondary);
+    color: var(--secondary);
+    background: rgba(12, 25, 41, 0.8);
+    border-top: 1px solid rgba(66, 153, 225, 0.2);
 }
 
 /* Loading Spinner */
