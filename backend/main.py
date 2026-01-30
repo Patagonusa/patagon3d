@@ -167,10 +167,12 @@ async def process_luma_video_generation(job_id: str, prompt: str):
             }
 
             # Create video generation request
+            # Using ray-2 model for high quality video generation
             response = await client.post(
                 f"{LUMA_API_BASE}/generations",
                 headers=headers,
                 json={
+                    "model": "ray-2",
                     "prompt": prompt,
                     "aspect_ratio": "16:9",
                     "loop": False
