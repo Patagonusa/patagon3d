@@ -933,6 +933,20 @@ body::before {
     border-color: var(--primary-light);
 }
 
+/* Demo Option */
+.demo-option {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(66, 153, 225, 0.2);
+    text-align: center;
+}
+
+.demo-option p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
 /* Media Queries */
 @media (min-width: 768px) {
     .app-container {

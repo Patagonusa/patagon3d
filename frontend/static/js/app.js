@@ -78,6 +78,15 @@ class Patagon3d {
         // Calibration modal
         document.getElementById('apply-calibration')?.addEventListener('click', () => this.applyCalibration());
         document.getElementById('cancel-calibration')?.addEventListener('click', () => this.hideCalibrationModal());
+
+        // Demo button
+        document.getElementById('demo-btn')?.addEventListener('click', () => this.loadDemoKitchen());
+    }
+
+    async loadDemoKitchen() {
+        this.showToast('Loading demo kitchen...', 'success');
+        this.showSection('model-section');
+        this.createDemoRoom();
     }
 
     handleVideoSelect(event) {
