@@ -87,12 +87,18 @@ body::before {
     z-index: 100;
 }
 
-/* Header Top - Logo and Language Selector */
+/* Header Top - Logo and Controls */
 .header-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 8px;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 
 .logo {
@@ -102,36 +108,112 @@ body::before {
     gap: 12px;
 }
 
-/* Language Selector */
+/* Language Selector - Bigger Buttons */
 .language-selector {
     display: flex;
-    gap: 4px;
+    gap: 6px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 4px;
+    border-radius: 10px;
+    padding: 5px;
 }
 
 .lang-btn {
-    padding: 6px 12px;
+    padding: 10px 18px;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     background: transparent;
     color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
+    min-width: 50px;
+    text-align: center;
 }
 
 .lang-btn:hover {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .lang-btn.active {
     background: var(--gradient-ocean);
     color: white;
-    box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3);
+    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
+}
+
+/* User Menu */
+.user-menu {
+    position: relative;
+}
+
+.user-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.user-icon {
+    font-size: 16px;
+}
+
+.user-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: rgba(26, 54, 93, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 8px;
+    min-width: 160px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+    backdrop-filter: blur(20px);
+    z-index: 200;
+}
+
+.user-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 14px;
+    text-align: left;
+    text-decoration: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item.admin-link {
+    color: var(--sky-blue);
 }
 
 .logo-image {
@@ -916,6 +998,200 @@ body::before {
     .measurement-item.highlight .value {
         font-size: 24px;
     }
+}
+
+/* History Panel */
+.history-panel {
+    margin-top: 30px;
+    background: var(--bg-glass);
+    border-radius: 20px;
+    padding: 24px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.history-header h4 {
+    font-size: 16px;
+    color: var(--sky-blue);
+}
+
+.history-count {
+    background: var(--gradient-ocean);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.history-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 10px;
+    min-width: 200px;
+    position: relative;
+}
+
+.history-item img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.history-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.history-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+}
+
+.history-item-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.history-item-delete {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(239, 68, 68, 0.8);
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s ease;
+}
+
+.history-item:hover .history-item-delete {
+    opacity: 1;
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: linear-gradient(135deg, rgba(26, 54, 93, 0.98) 0%, rgba(12, 25, 41, 0.98) 100%);
+    border-radius: 20px;
+    padding: 30px;
+    width: 100%;
+    max-width: 450px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.modal-header h3 {
+    font-size: 20px;
+    color: white;
+}
+
+.modal-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.modal-content .form-group {
+    margin-bottom: 18px;
+}
+
+.modal-content .form-group label {
+    display: block;
+    color: var(--sky-blue);
+    font-size: 13px;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.modal-content .form-group input,
+.modal-content .form-group select {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.modal-content .form-group input:focus,
+.modal-content .form-group select:focus {
+    outline: none;
+    border-color: var(--sky-blue);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.modal-content .form-group select option {
+    background: #1a365d;
+    color: white;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.modal-actions .btn {
+    flex: 1;
 }
 
 /* Smooth Scrolling */

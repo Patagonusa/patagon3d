@@ -1,25 +1,28 @@
 """
 Patagon3d Backend - Real Photo AI Renovation & Measurement System
-For Hello Projects Pro (CSLB #1135440)
+For Hello Projects Pro
 
 Features:
+- User authentication with admin management
 - Upload real room photos/videos
 - AI-powered measurement estimation using GPT-4 Vision
 - Real image modification using Google Vertex AI Imagen 3.0
-- Same approach as land-roof-measure project
+- PDF generation for client proposals
 """
 import os
 import uuid
 import httpx
 import base64
-from datetime import datetime
+import hashlib
+import json
+from datetime import datetime, timedelta
 from typing import Optional, List
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form, Depends, Cookie, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
 app = FastAPI(title="Patagon3d", description="Real Photo AI Renovation & Measurement System")
@@ -50,24 +53,61 @@ renovation_jobs = {}
 measurement_jobs = {}
 uploaded_images = {}
 
+# Session store (in production, use Redis or database)
+sessions = {}
+
+# User store (in production, use database)
+# Password is hashed using SHA256
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+users_db = {
+    "felipe@patagonusa.com": {
+        "email": "felipe@patagonusa.com",
+        "password_hash": hash_password("Solar2025$"),
+        "name": "Felipe",
+        "role": "admin",
+        "approved": True,
+        "created_at": datetime.utcnow().isoformat()
+    }
+}
+
+# Pending user registrations
+pending_users = {}
+
 # Templates
 templates = Jinja2Templates(directory="frontend/templates")
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
 
+# ============================================================================
+# MODELS
+# ============================================================================
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: str
+
+class UserApprovalRequest(BaseModel):
+    email: str
+    approve: bool
+
 class MeasurementRequest(BaseModel):
     image_url: str
-    room_type: str = "kitchen"  # kitchen, bathroom, bedroom, living_room
-
+    room_type: str = "kitchen"
 
 class RenovationRequest(BaseModel):
     image_url: str
-    element_type: str  # cabinets, countertops, backsplash, flooring, appliances
-    style: str  # modern, transitional, farmhouse, contemporary
+    element_type: str
+    style: str
     color: Optional[str] = None
     material: Optional[str] = None
     description: Optional[str] = None
-
 
 class MeasurementResult(BaseModel):
     job_id: str
@@ -76,7 +116,6 @@ class MeasurementResult(BaseModel):
     measurements: Optional[dict] = None
     error: Optional[str] = None
     created_at: str
-
 
 class RenovationResult(BaseModel):
     job_id: str
@@ -88,10 +127,237 @@ class RenovationResult(BaseModel):
     created_at: str
 
 
+# ============================================================================
+# AUTHENTICATION
+# ============================================================================
+
+def get_current_user(session_id: Optional[str] = Cookie(None, alias="session_id")):
+    """Get current user from session"""
+    if not session_id or session_id not in sessions:
+        return None
+
+    session = sessions[session_id]
+    if datetime.fromisoformat(session["expires_at"]) < datetime.utcnow():
+        del sessions[session_id]
+        return None
+
+    email = session["email"]
+    if email in users_db:
+        return users_db[email]
+    return None
+
+def require_auth(session_id: Optional[str] = Cookie(None, alias="session_id")):
+    """Require authenticated user"""
+    user = get_current_user(session_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not user.get("approved"):
+        raise HTTPException(status_code=403, detail="Account pending approval")
+    return user
+
+def require_admin(session_id: Optional[str] = Cookie(None, alias="session_id")):
+    """Require admin user"""
+    user = require_auth(session_id)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
 @app.get("/")
-async def home(request: Request):
-    """Render main page"""
-    return templates.TemplateResponse("index.html", {"request": request})
+async def home(request: Request, session_id: Optional[str] = Cookie(None, alias="session_id")):
+    """Render main page or redirect to login"""
+    user = get_current_user(session_id)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    if not user.get("approved"):
+        return templates.TemplateResponse("pending.html", {"request": request, "user": user})
+    return templates.TemplateResponse("index.html", {"request": request, "user": user})
+
+
+@app.get("/login")
+async def login_page(request: Request, session_id: Optional[str] = Cookie(None, alias="session_id")):
+    """Render login page"""
+    user = get_current_user(session_id)
+    if user and user.get("approved"):
+        return RedirectResponse(url="/", status_code=302)
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.post("/api/auth/login")
+async def login(request: LoginRequest, response: Response):
+    """Authenticate user"""
+    email = request.email.lower().strip()
+    password_hash = hash_password(request.password)
+
+    if email not in users_db:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    user = users_db[email]
+    if user["password_hash"] != password_hash:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not user.get("approved"):
+        raise HTTPException(status_code=403, detail="Account pending approval")
+
+    # Create session
+    session_id = str(uuid.uuid4())
+    sessions[session_id] = {
+        "email": email,
+        "created_at": datetime.utcnow().isoformat(),
+        "expires_at": (datetime.utcnow() + timedelta(days=7)).isoformat()
+    }
+
+    response.set_cookie(
+        key="session_id",
+        value=session_id,
+        httponly=True,
+        max_age=7*24*60*60,
+        samesite="lax"
+    )
+
+    return {
+        "success": True,
+        "user": {
+            "email": user["email"],
+            "name": user["name"],
+            "role": user["role"]
+        }
+    }
+
+
+@app.post("/api/auth/register")
+async def register(request: RegisterRequest):
+    """Register new user (requires admin approval)"""
+    email = request.email.lower().strip()
+
+    if email in users_db or email in pending_users:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    pending_users[email] = {
+        "email": email,
+        "password_hash": hash_password(request.password),
+        "name": request.name,
+        "role": "user",
+        "approved": False,
+        "created_at": datetime.utcnow().isoformat()
+    }
+
+    return {"success": True, "message": "Registration submitted. Waiting for admin approval."}
+
+
+@app.post("/api/auth/logout")
+async def logout(response: Response, session_id: Optional[str] = Cookie(None, alias="session_id")):
+    """Logout user"""
+    if session_id and session_id in sessions:
+        del sessions[session_id]
+
+    response.delete_cookie("session_id")
+    return {"success": True}
+
+
+@app.get("/api/auth/me")
+async def get_me(user: dict = Depends(require_auth)):
+    """Get current user info"""
+    return {
+        "email": user["email"],
+        "name": user["name"],
+        "role": user["role"]
+    }
+
+
+# ============================================================================
+# ADMIN USER MANAGEMENT
+# ============================================================================
+
+@app.get("/admin")
+async def admin_page(request: Request, user: dict = Depends(require_admin)):
+    """Render admin page"""
+    return templates.TemplateResponse("admin.html", {"request": request, "user": user})
+
+
+@app.get("/api/admin/users")
+async def list_users(user: dict = Depends(require_admin)):
+    """List all users and pending registrations"""
+    approved_users = [
+        {
+            "email": u["email"],
+            "name": u["name"],
+            "role": u["role"],
+            "approved": u["approved"],
+            "created_at": u["created_at"]
+        }
+        for u in users_db.values()
+    ]
+
+    pending = [
+        {
+            "email": u["email"],
+            "name": u["name"],
+            "role": u["role"],
+            "approved": u["approved"],
+            "created_at": u["created_at"]
+        }
+        for u in pending_users.values()
+    ]
+
+    return {
+        "users": approved_users,
+        "pending": pending
+    }
+
+
+@app.post("/api/admin/approve")
+async def approve_user(request: UserApprovalRequest, admin: dict = Depends(require_admin)):
+    """Approve or reject pending user"""
+    email = request.email.lower().strip()
+
+    if email not in pending_users:
+        raise HTTPException(status_code=404, detail="Pending user not found")
+
+    if request.approve:
+        # Move to approved users
+        users_db[email] = pending_users[email]
+        users_db[email]["approved"] = True
+        del pending_users[email]
+        return {"success": True, "message": f"User {email} approved"}
+    else:
+        # Reject
+        del pending_users[email]
+        return {"success": True, "message": f"User {email} rejected"}
+
+
+@app.delete("/api/admin/users/{email}")
+async def delete_user(email: str, admin: dict = Depends(require_admin)):
+    """Delete a user"""
+    email = email.lower().strip()
+
+    if email == admin["email"]:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+
+    if email in users_db:
+        del users_db[email]
+        return {"success": True, "message": f"User {email} deleted"}
+
+    if email in pending_users:
+        del pending_users[email]
+        return {"success": True, "message": f"Pending user {email} deleted"}
+
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.post("/api/admin/users/{email}/role")
+async def change_role(email: str, role: str = Form(...), admin: dict = Depends(require_admin)):
+    """Change user role"""
+    email = email.lower().strip()
+
+    if email not in users_db:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if role not in ["user", "admin"]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+
+    users_db[email]["role"] = role
+    return {"success": True, "message": f"User {email} role changed to {role}"}
 
 
 # ============================================================================
@@ -99,27 +365,20 @@ async def home(request: Request):
 # ============================================================================
 
 @app.post("/api/upload-image")
-async def upload_image(file: UploadFile = File(...)):
-    """
-    Upload a room photo for analysis and renovation
-    Stores image and returns URL for further processing
-    """
-    # Generate unique ID
+async def upload_image(file: UploadFile = File(...), user: dict = Depends(require_auth)):
+    """Upload a room photo for analysis and renovation"""
     image_id = str(uuid.uuid4())
-
-    # Read file content
     content = await file.read()
     content_type = file.content_type or "image/jpeg"
 
-    # Store in memory (for demo - use Supabase in production)
     uploaded_images[image_id] = {
         "content": content,
         "content_type": content_type,
         "filename": file.filename,
+        "user_email": user["email"],
         "created_at": datetime.utcnow().isoformat()
     }
 
-    # If Supabase is configured, upload there
     image_url = f"/api/image/{image_id}"
 
     if SUPABASE_URL and SUPABASE_SERVICE_KEY:
@@ -166,11 +425,8 @@ async def get_image(image_id: str):
 # ============================================================================
 
 @app.post("/api/analyze-measurements")
-async def analyze_measurements(background_tasks: BackgroundTasks, request: MeasurementRequest):
-    """
-    Analyze a room photo using GPT-4 Vision to estimate measurements
-    Recognizes surfaces, dimensions, and provides estimates
-    """
+async def analyze_measurements(background_tasks: BackgroundTasks, request: MeasurementRequest, user: dict = Depends(require_auth)):
+    """Analyze a room photo using GPT-4 Vision to estimate measurements"""
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="OpenAI API key not configured")
 
@@ -192,11 +448,9 @@ async def analyze_measurements(background_tasks: BackgroundTasks, request: Measu
 async def process_measurement_analysis(job_id: str, image_url: str, room_type: str):
     """Use GPT-4 Vision to analyze room and estimate measurements"""
     try:
-        # Get image as base64
         image_base64 = await get_image_base64(image_url)
 
         async with httpx.AsyncClient(timeout=120.0) as client:
-            # GPT-4 Vision analysis prompt
             analysis_prompt = f"""Analyze this {room_type} photo and provide detailed measurements and estimates.
 
 You are an expert contractor estimator. Analyze the image and provide:
@@ -278,10 +532,7 @@ Return as JSON with this structure:
                 result = response.json()
                 content = result["choices"][0]["message"]["content"]
 
-                # Parse JSON from response
-                import json
                 try:
-                    # Extract JSON from response (may be wrapped in markdown)
                     if "```json" in content:
                         json_str = content.split("```json")[1].split("```")[0].strip()
                     elif "```" in content:
@@ -317,11 +568,8 @@ async def get_measurement_status(job_id: str):
 # ============================================================================
 
 @app.post("/api/renovate")
-async def generate_renovation(background_tasks: BackgroundTasks, request: RenovationRequest):
-    """
-    Generate AI renovation by modifying the REAL uploaded photo
-    Uses Google Vertex AI Imagen 3.0 for image-to-image transformation
-    """
+async def generate_renovation(background_tasks: BackgroundTasks, request: RenovationRequest, user: dict = Depends(require_auth)):
+    """Generate AI renovation by modifying the REAL uploaded photo"""
     if not GOOGLE_CLOUD_API_KEY:
         raise HTTPException(status_code=500, detail="Google Cloud API key not configured")
 
@@ -358,15 +606,10 @@ async def process_renovation(
     material: Optional[str],
     description: Optional[str]
 ):
-    """
-    Use Google Vertex AI Imagen 3.0 to modify the real photo
-    Same approach as land-roof-measure project
-    """
+    """Use Google Vertex AI Imagen 3.0 to modify the real photo"""
     try:
-        # Get image as base64
         image_base64 = await get_image_base64(image_url)
 
-        # Build the modification prompt based on element type
         preserve_clause = "DO NOT change any other elements in the room. Keep walls, windows, doors, ceiling, lighting, and all other fixtures exactly the same."
 
         if element_type == "cabinets":
@@ -394,10 +637,8 @@ async def process_renovation(
             prompt = f"Edit this kitchen photo: replace ONLY the visible appliances with modern {style_desc} appliances. {preserve_clause}"
 
         else:
-            # Custom description
             prompt = f"Edit this room photo: {description or 'modernize the space'}. {preserve_clause}"
 
-        # Add style enhancement
         style_additions = {
             "modern": "Clean lines, minimalist hardware, contemporary fixtures.",
             "farmhouse": "Rustic wood elements, vintage-inspired hardware, warm tones.",
@@ -410,7 +651,6 @@ async def process_renovation(
         renovation_jobs[job_id].prompt_used = prompt
 
         async with httpx.AsyncClient(timeout=120.0) as client:
-            # Call Google Vertex AI Imagen 3.0
             imagen_url = f"https://{GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/{GOOGLE_CLOUD_PROJECT_ID}/locations/{GOOGLE_CLOUD_LOCATION}/publishers/google/models/imagen-3.0-capability-001:predict?key={GOOGLE_CLOUD_API_KEY}"
 
             response = await client.post(
@@ -441,10 +681,8 @@ async def process_renovation(
                 result = response.json()
                 generated_base64 = result["predictions"][0]["bytesBase64Encoded"]
 
-                # Store generated image
                 generated_url = f"data:image/jpeg;base64,{generated_base64}"
 
-                # Try to upload to Supabase for permanent storage
                 if SUPABASE_URL and SUPABASE_SERVICE_KEY:
                     try:
                         generated_bytes = base64.b64decode(generated_base64)
@@ -491,17 +729,14 @@ async def get_renovation_status(job_id: str):
 async def get_image_base64(image_url: str) -> str:
     """Get image as base64 string from URL or memory"""
 
-    # Check if it's a local image ID
     if image_url.startswith("/api/image/"):
         image_id = image_url.split("/")[-1]
         if image_id in uploaded_images:
             return base64.b64encode(uploaded_images[image_id]["content"]).decode()
 
-    # Check if it's already base64
     if image_url.startswith("data:"):
         return image_url.split(",")[1]
 
-    # Fetch from URL
     async with httpx.AsyncClient() as client:
         response = await client.get(image_url)
         if response.status_code == 200:

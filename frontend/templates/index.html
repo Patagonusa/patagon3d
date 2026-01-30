@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Patagon3d - AI Renovation Visualizer</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -14,15 +15,28 @@
                 <div class="logo">
                     <img src="/static/images/logo.png" alt="Patagon Consulting" class="logo-image">
                 </div>
-                <!-- Language Selector -->
-                <div class="language-selector">
-                    <button class="lang-btn active" data-lang="en">EN</button>
-                    <button class="lang-btn" data-lang="es">ES</button>
+                <div class="header-controls">
+                    <!-- Language Selector -->
+                    <div class="language-selector">
+                        <button class="lang-btn active" data-lang="en">EN</button>
+                        <button class="lang-btn" data-lang="es">ES</button>
+                    </div>
+                    <!-- User Menu -->
+                    <div class="user-menu">
+                        <button class="user-btn" id="user-menu-btn">
+                            <span class="user-icon">👤</span>
+                            <span class="user-name" id="user-name">User</span>
+                        </button>
+                        <div class="user-dropdown" id="user-dropdown">
+                            <a href="/admin" class="dropdown-item admin-link" id="admin-link">Admin Panel</a>
+                            <button class="dropdown-item" onclick="logout()">Logout</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <h1 class="app-title">Patagon3d</h1>
             <p class="tagline" data-i18n="tagline">AI Renovation Visualizer</p>
-            <p class="company">Hello Projects Pro | CSLB #1135440</p>
+            <p class="company">Hello Projects Pro</p>
         </header>
 
         <!-- Main Content -->
@@ -71,11 +85,9 @@
                 </div>
 
                 <div class="measurements-container">
-                    <!-- Left: Image with overlays -->
                     <div class="measurement-image-wrapper">
                         <div class="measurement-image">
                             <img id="measurement-photo" src="" alt="Room being analyzed">
-                            <!-- Measurement overlays will be added here by JS -->
                             <div id="measurement-overlay" class="measurement-overlay"></div>
                         </div>
 
@@ -91,34 +103,25 @@
                         </div>
                     </div>
 
-                    <!-- Right: Results Panel -->
                     <div id="measurements-results" class="measurements-results hidden">
                         <h3 data-i18n="estimated_measurements">Estimated Measurements</h3>
 
                         <div class="measurement-card">
                             <h4 data-i18n="room_dimensions">Room Dimensions</h4>
-                            <div class="measurement-grid" id="room-dimensions">
-                                <!-- Populated by JS -->
-                            </div>
+                            <div class="measurement-grid" id="room-dimensions"></div>
                         </div>
 
                         <div class="measurement-card">
                             <h4 data-i18n="surface_areas">Surface Areas</h4>
-                            <div class="measurement-grid" id="surface-areas">
-                                <!-- Populated by JS -->
-                            </div>
+                            <div class="measurement-grid" id="surface-areas"></div>
                         </div>
 
                         <div class="measurement-card">
                             <h4 data-i18n="fixtures_identified">Fixtures Identified</h4>
-                            <div id="fixtures-list" class="fixtures-list">
-                                <!-- Populated by JS -->
-                            </div>
+                            <div id="fixtures-list" class="fixtures-list"></div>
                         </div>
 
-                        <div class="confidence-indicator" id="confidence-indicator">
-                            <!-- Populated by JS -->
-                        </div>
+                        <div class="confidence-indicator" id="confidence-indicator"></div>
 
                         <button id="to-renovation-btn" class="btn btn-primary btn-large">
                             <span class="btn-icon">🎨</span>
@@ -136,13 +139,11 @@
                 </div>
 
                 <div class="renovation-container">
-                    <!-- Original Image -->
                     <div class="original-image-container">
                         <h4 data-i18n="your_room">Your Room</h4>
                         <img id="original-photo" src="" alt="Original room">
                     </div>
 
-                    <!-- Renovation Options -->
                     <div class="renovation-options">
                         <div class="option-group">
                             <label data-i18n="what_to_change">What do you want to change?</label>
@@ -165,7 +166,6 @@
                             </div>
                         </div>
 
-                        <!-- Dynamic options based on element type -->
                         <div id="cabinets-options" class="element-options">
                             <label data-i18n="cabinet_color">Cabinet Color</label>
                             <div class="color-buttons">
@@ -233,6 +233,10 @@
                         <div id="renovation-image-container" class="hidden">
                             <img id="renovation-image" src="" alt="AI Renovation">
                             <div class="result-actions">
+                                <button id="save-to-history-btn" class="btn btn-primary">
+                                    <span class="btn-icon">💾</span>
+                                    <span data-i18n="btn_save">Save</span>
+                                </button>
                                 <button id="download-btn" class="btn btn-secondary">
                                     <span class="btn-icon">📥</span>
                                     <span data-i18n="btn_download">Download</span>
@@ -244,6 +248,19 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- History Panel -->
+                <div id="history-panel" class="history-panel hidden">
+                    <div class="history-header">
+                        <h4 data-i18n="saved_options">Saved Options</h4>
+                        <span id="history-count" class="history-count">0</span>
+                    </div>
+                    <div id="history-items" class="history-items"></div>
+                    <button id="generate-pdf-btn" class="btn btn-primary btn-large" disabled>
+                        <span class="btn-icon">📄</span>
+                        <span data-i18n="btn_generate_pdf">Generate PDF for Client</span>
+                    </button>
                 </div>
             </section>
 
@@ -274,6 +291,47 @@
                 </div>
             </section>
         </main>
+
+        <!-- PDF Modal -->
+        <div id="pdf-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 data-i18n="pdf_client_info">Client Information</h3>
+                    <button class="modal-close" id="modal-close">&times;</button>
+                </div>
+                <form id="pdf-form">
+                    <div class="form-group">
+                        <label data-i18n="client_name">Client Name</label>
+                        <input type="text" id="client-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="client_address">Address</label>
+                        <input type="text" id="client-address" required>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="client_phone">Phone</label>
+                        <input type="tel" id="client-phone">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="project_type">Project Type</label>
+                        <select id="client-project">
+                            <option value="Kitchen Renovation">Kitchen Renovation</option>
+                            <option value="Bathroom Renovation">Bathroom Renovation</option>
+                            <option value="Flooring">Flooring</option>
+                            <option value="Full Remodel">Full Remodel</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="sales_rep">Sales Representative</label>
+                        <input type="text" id="sales-rep" value="Hello Projects Pro">
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="modal-cancel" data-i18n="btn_cancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="confirm-generate-pdf" data-i18n="btn_generate_pdf">Generate PDF</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <!-- Footer -->
         <footer class="footer">

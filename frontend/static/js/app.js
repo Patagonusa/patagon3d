@@ -2,6 +2,7 @@
  * Patagon3d - AI Renovation Visualizer
  * Real photo upload, AI measurement analysis, and image-to-image renovation
  * Bilingual: English / Spanish
+ * PDF Generation for client proposals
  */
 
 // ============================================================================
@@ -10,10 +11,7 @@
 
 const translations = {
     en: {
-        // Header
         tagline: "AI Renovation Visualizer",
-
-        // Step 1
         step1_title: "Upload Room Photo",
         step1_instruction: "Take a photo of your kitchen, bathroom, or room for AI analysis and renovation visualization.",
         upload_prompt: "Tap to take photo or select from gallery",
@@ -21,8 +19,6 @@ const translations = {
         btn_skip_renovation: "Skip to Renovation",
         uploading: "Uploading...",
         processing: "Processing...",
-
-        // Step 2
         step2_title: "AI Measurements",
         analyzing_room: "AI is analyzing your room...",
         estimated_measurements: "Estimated Measurements",
@@ -30,19 +26,6 @@ const translations = {
         surface_areas: "Surface Areas",
         fixtures_identified: "Fixtures Identified",
         btn_continue_renovation: "Continue to AI Renovation",
-        length: "Length",
-        width: "Width",
-        height: "Height",
-        total_area: "Total Area",
-        countertop_linear: "Countertop (linear)",
-        countertop_area: "Countertop (area)",
-        upper_cabinets: "Upper Cabinets",
-        lower_cabinets: "Lower Cabinets",
-        backsplash_area: "Backsplash",
-        floor_area: "Floor Area",
-        confidence: "Confidence",
-
-        // Step 3
         step3_title: "AI Renovation",
         your_room: "Your Room",
         what_to_change: "What do you want to change?",
@@ -80,82 +63,66 @@ const translations = {
         btn_generate: "Generate AI Renovation",
         ai_proposal: "AI Renovation Proposal",
         transforming_room: "AI is transforming your room...",
+        btn_save: "Save",
         btn_download: "Download",
         btn_try_another: "Try Another",
-
-        // Comparison
+        saved_options: "Saved Options",
+        btn_generate_pdf: "Generate PDF for Client",
         before_after: "Before & After",
         before: "Before",
         after: "After",
         btn_back: "Back to Options",
         btn_new_photo: "New Photo",
-
-        // Errors
-        upload_failed: "Upload failed",
-        analysis_failed: "Analysis failed",
-        renovation_failed: "Renovation failed",
-        timeout: "Request timed out. Please try again."
+        pdf_client_info: "Client Information",
+        client_name: "Client Name",
+        client_address: "Address",
+        client_phone: "Phone",
+        project_type: "Project Type",
+        sales_rep: "Sales Representative",
+        btn_cancel: "Cancel"
     },
     es: {
-        // Header
         tagline: "Visualizador de Renovaciones con IA",
-
-        // Step 1
         step1_title: "Subir Foto del Cuarto",
-        step1_instruction: "Toma una foto de tu cocina, baño o habitación para análisis de IA y visualización de renovación.",
-        upload_prompt: "Toca para tomar foto o seleccionar de galería",
+        step1_instruction: "Toma una foto de tu cocina, bano o habitacion para analisis de IA y visualizacion de renovacion.",
+        upload_prompt: "Toca para tomar foto o seleccionar de galeria",
         btn_analyze: "Analizar Medidas",
-        btn_skip_renovation: "Ir a Renovación",
+        btn_skip_renovation: "Ir a Renovacion",
         uploading: "Subiendo...",
         processing: "Procesando...",
-
-        // Step 2
         step2_title: "Medidas con IA",
-        analyzing_room: "La IA está analizando tu cuarto...",
+        analyzing_room: "La IA esta analizando tu cuarto...",
         estimated_measurements: "Medidas Estimadas",
         room_dimensions: "Dimensiones del Cuarto",
-        surface_areas: "Áreas de Superficie",
+        surface_areas: "Areas de Superficie",
         fixtures_identified: "Elementos Identificados",
-        btn_continue_renovation: "Continuar a Renovación",
-        length: "Largo",
-        width: "Ancho",
-        height: "Alto",
-        total_area: "Área Total",
-        countertop_linear: "Encimera (lineal)",
-        countertop_area: "Encimera (área)",
-        upper_cabinets: "Gabinetes Superiores",
-        lower_cabinets: "Gabinetes Inferiores",
-        backsplash_area: "Salpicadero",
-        floor_area: "Área del Piso",
-        confidence: "Confianza",
-
-        // Step 3
-        step3_title: "Renovación con IA",
+        btn_continue_renovation: "Continuar a Renovacion",
+        step3_title: "Renovacion con IA",
         your_room: "Tu Cuarto",
-        what_to_change: "¿Qué quieres cambiar?",
+        what_to_change: "Que quieres cambiar?",
         cabinets: "Gabinetes",
         countertops: "Encimeras",
         backsplash: "Salpicadero",
         flooring: "Piso",
-        appliances: "Electrodomésticos",
+        appliances: "Electrodomesticos",
         style: "Estilo",
         modern: "Moderno",
-        farmhouse: "Rústico",
+        farmhouse: "Rustico",
         transitional: "Transicional",
-        contemporary: "Contemporáneo",
+        contemporary: "Contemporaneo",
         cabinet_color: "Color de Gabinetes",
         countertop_material: "Material de Encimera",
         backsplash_style: "Estilo de Salpicadero",
         flooring_type: "Tipo de Piso",
-        appliance_finish: "Acabado de Electrodomésticos",
+        appliance_finish: "Acabado de Electrodomesticos",
         white_quartz: "Cuarzo Blanco",
         black_granite: "Granito Negro",
-        carrara_marble: "Mármol Carrara",
+        carrara_marble: "Marmol Carrara",
         butcher_block: "Bloque de Carnicero",
         white_subway: "Subway Blanco",
         herringbone: "Espiga",
         mosaic: "Mosaico",
-        marble_slab: "Losa de Mármol",
+        marble_slab: "Losa de Marmol",
         oak_hardwood: "Roble",
         lvp_gray: "Vinilo Gris",
         tile: "Azulejo",
@@ -164,24 +131,26 @@ const translations = {
         black_stainless: "Acero Negro",
         white: "Blanco",
         panel_ready: "Panel Integrado",
-        btn_generate: "Generar Renovación con IA",
-        ai_proposal: "Propuesta de Renovación",
-        transforming_room: "La IA está transformando tu cuarto...",
+        btn_generate: "Generar Renovacion con IA",
+        ai_proposal: "Propuesta de Renovacion",
+        transforming_room: "La IA esta transformando tu cuarto...",
+        btn_save: "Guardar",
         btn_download: "Descargar",
         btn_try_another: "Probar Otro",
-
-        // Comparison
-        before_after: "Antes y Después",
+        saved_options: "Opciones Guardadas",
+        btn_generate_pdf: "Generar PDF para Cliente",
+        before_after: "Antes y Despues",
         before: "Antes",
-        after: "Después",
+        after: "Despues",
         btn_back: "Volver a Opciones",
         btn_new_photo: "Nueva Foto",
-
-        // Errors
-        upload_failed: "Error al subir",
-        analysis_failed: "Error en análisis",
-        renovation_failed: "Error en renovación",
-        timeout: "Tiempo agotado. Intenta de nuevo."
+        pdf_client_info: "Informacion del Cliente",
+        client_name: "Nombre del Cliente",
+        client_address: "Direccion",
+        client_phone: "Telefono",
+        project_type: "Tipo de Proyecto",
+        sales_rep: "Representante de Ventas",
+        btn_cancel: "Cancelar"
     }
 };
 
@@ -195,22 +164,21 @@ let selectedElement = 'cabinets';
 let selectedStyle = 'modern';
 let selectedColor = 'white';
 let selectedMaterial = null;
-
-// DOM Elements
-const uploadSection = document.getElementById('upload-section');
-const measurementsSection = document.getElementById('measurements-section');
-const renovationSection = document.getElementById('renovation-section');
-const comparisonSection = document.getElementById('comparison-section');
+let currentUser = null;
+let visualizationHistory = [];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initializeLanguage();
+    initializeUser();
     initializeUpload();
     initializeElementButtons();
     initializeStyleButtons();
     initializeColorButtons();
     initializeMaterialButtons();
     initializeActions();
+    initializeUserMenu();
+    initializePdfModal();
 });
 
 // ============================================================================
@@ -218,15 +186,17 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================================
 
 function initializeLanguage() {
-    // Set initial language
     applyTranslations(currentLang);
     updateLanguageButtons();
 
-    // Language button listeners
     document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const lang = btn.dataset.lang;
-            setLanguage(lang);
+            if (lang) {
+                setLanguage(lang);
+            }
         });
     });
 }
@@ -240,7 +210,11 @@ function setLanguage(lang) {
 
 function updateLanguageButtons() {
     document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.lang === currentLang);
+        if (btn.dataset.lang === currentLang) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
     });
 }
 
@@ -261,46 +235,95 @@ function t(key) {
 }
 
 // ============================================================================
+// USER SYSTEM
+// ============================================================================
+
+async function initializeUser() {
+    try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+            currentUser = await response.json();
+            document.getElementById('user-name').textContent = currentUser.name;
+
+            // Show admin link only for admins
+            const adminLink = document.getElementById('admin-link');
+            if (adminLink) {
+                adminLink.style.display = currentUser.role === 'admin' ? 'block' : 'none';
+            }
+        }
+    } catch (err) {
+        console.error('Error fetching user:', err);
+    }
+}
+
+function initializeUserMenu() {
+    const menuBtn = document.getElementById('user-menu-btn');
+    const dropdown = document.getElementById('user-dropdown');
+
+    if (menuBtn && dropdown) {
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+
+        document.addEventListener('click', () => {
+            dropdown.classList.remove('show');
+        });
+    }
+}
+
+async function logout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login';
+    } catch (err) {
+        console.error('Logout error:', err);
+        window.location.href = '/login';
+    }
+}
+
+// ============================================================================
 // IMAGE UPLOAD
 // ============================================================================
 
 function initializeUpload() {
     const uploadArea = document.getElementById('upload-area');
     const imageInput = document.getElementById('image-input');
-    const imagePreview = document.getElementById('image-preview');
-    const previewImage = document.getElementById('preview-image');
 
-    // Click to upload
-    uploadArea.addEventListener('click', () => {
-        imageInput.click();
-    });
+    if (uploadArea) {
+        uploadArea.addEventListener('click', () => {
+            imageInput.click();
+        });
+    }
 
-    // Handle file selection
-    imageInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            await handleImageUpload(file);
-        }
-    });
+    if (imageInput) {
+        imageInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                await handleImageUpload(file);
+            }
+        });
+    }
 
-    // Drag and drop
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.classList.add('dragover');
-    });
+    if (uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
 
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('dragover');
-    });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
 
-    uploadArea.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        uploadArea.classList.remove('dragover');
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
-            await handleImageUpload(file);
-        }
-    });
+        uploadArea.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                await handleImageUpload(file);
+            }
+        });
+    }
 }
 
 async function handleImageUpload(file) {
@@ -311,25 +334,22 @@ async function handleImageUpload(file) {
     const previewImage = document.getElementById('preview-image');
     const uploadArea = document.getElementById('upload-area');
 
-    // Show progress
     uploadArea.classList.add('hidden');
     uploadProgress.classList.remove('hidden');
     progressFill.style.width = '30%';
-    progressText.textContent = 'Uploading image...';
+    progressText.textContent = t('uploading');
 
     try {
-        // Create form data
         const formData = new FormData();
         formData.append('file', file);
 
-        // Upload to server
         const response = await fetch('/api/upload-image', {
             method: 'POST',
             body: formData
         });
 
         progressFill.style.width = '70%';
-        progressText.textContent = 'Processing...';
+        progressText.textContent = t('processing');
 
         const result = await response.json();
 
@@ -337,17 +357,14 @@ async function handleImageUpload(file) {
             currentImageUrl = result.url;
             currentImageId = result.image_id;
 
-            // Show preview
             progressFill.style.width = '100%';
 
-            // Create object URL for preview
             const objectUrl = URL.createObjectURL(file);
             previewImage.src = objectUrl;
 
-            // Store base64 for later use
             const reader = new FileReader();
             reader.onload = (e) => {
-                currentImageUrl = e.target.result; // Store as data URL
+                currentImageUrl = e.target.result;
             };
             reader.readAsDataURL(file);
 
@@ -375,7 +392,6 @@ async function handleImageUpload(file) {
 // ============================================================================
 
 async function analyzeMeasurements() {
-    // Switch to measurements section
     showSection('measurements');
 
     const measurementPhoto = document.getElementById('measurement-photo');
@@ -397,8 +413,6 @@ async function analyzeMeasurements() {
         });
 
         const result = await response.json();
-
-        // Poll for completion
         await pollMeasurementStatus(result.job_id);
     } catch (error) {
         console.error('Measurement error:', error);
@@ -445,21 +459,20 @@ function displayMeasurements(measurements) {
     const confidenceIndicator = document.getElementById('confidence-indicator');
     const overlay = document.getElementById('measurement-overlay');
 
-    // Room dimensions
     if (measurements.room_dimensions) {
         const dims = measurements.room_dimensions;
         roomDimensions.innerHTML = `
             <div class="measurement-item">
                 <span class="label">Length</span>
-                <span class="value">${dims.length_ft || 'N/A'}' </span>
+                <span class="value">${dims.length_ft || 'N/A'}'</span>
             </div>
             <div class="measurement-item">
                 <span class="label">Width</span>
-                <span class="value">${dims.width_ft || 'N/A'}' </span>
+                <span class="value">${dims.width_ft || 'N/A'}'</span>
             </div>
             <div class="measurement-item">
                 <span class="label">Height</span>
-                <span class="value">${dims.height_ft || 'N/A'}' </span>
+                <span class="value">${dims.height_ft || 'N/A'}'</span>
             </div>
             <div class="measurement-item highlight">
                 <span class="label">Total Area</span>
@@ -467,7 +480,6 @@ function displayMeasurements(measurements) {
             </div>
         `;
 
-        // Add overlays on image
         if (overlay) {
             overlay.innerHTML = `
                 <div class="overlay-measurement" style="top: 10%; left: 50%; transform: translateX(-50%);">
@@ -483,47 +495,28 @@ function displayMeasurements(measurements) {
         }
     }
 
-    // Surface areas
     if (measurements.surfaces) {
         const surf = measurements.surfaces;
         surfaceAreas.innerHTML = `
             <div class="measurement-item">
-                <span class="label">Countertop (linear)</span>
-                <span class="value">${surf.countertop_linear_ft || 'N/A'}' </span>
-            </div>
-            <div class="measurement-item">
-                <span class="label">Countertop (area)</span>
+                <span class="label">Countertop</span>
                 <span class="value">${surf.countertop_sqft || 'N/A'} sq ft</span>
             </div>
             <div class="measurement-item">
                 <span class="label">Upper Cabinets</span>
-                <span class="value">${surf.upper_cabinets_linear_ft || 'N/A'}' </span>
+                <span class="value">${surf.upper_cabinets_linear_ft || 'N/A'}'</span>
             </div>
             <div class="measurement-item">
                 <span class="label">Lower Cabinets</span>
-                <span class="value">${surf.lower_cabinets_linear_ft || 'N/A'}' </span>
-            </div>
-            <div class="measurement-item">
-                <span class="label">Backsplash</span>
-                <span class="value">${surf.backsplash_sqft || 'N/A'} sq ft</span>
+                <span class="value">${surf.lower_cabinets_linear_ft || 'N/A'}'</span>
             </div>
             <div class="measurement-item">
                 <span class="label">Floor Area</span>
                 <span class="value">${surf.floor_sqft || 'N/A'} sq ft</span>
             </div>
         `;
-
-        // Add surface overlays
-        if (overlay && surf.countertop_sqft) {
-            overlay.innerHTML += `
-                <div class="overlay-measurement" style="top: 45%; left: 30%;">
-                    Countertop: ${surf.countertop_sqft} sq ft
-                </div>
-            `;
-        }
     }
 
-    // Fixtures
     if (measurements.fixtures && measurements.fixtures.length > 0) {
         fixturesList.innerHTML = measurements.fixtures.map(f => `
             <div class="fixture-item">
@@ -535,7 +528,6 @@ function displayMeasurements(measurements) {
         fixturesList.innerHTML = '<p>No fixtures identified</p>';
     }
 
-    // Confidence
     const confidence = measurements.confidence || 'medium';
     const confidenceColors = { high: '#22c55e', medium: '#f59e0b', low: '#ef4444' };
     confidenceIndicator.innerHTML = `
@@ -598,17 +590,13 @@ function initializeMaterialButtons() {
 }
 
 function updateElementOptions() {
-    // Hide all element options
     document.querySelectorAll('.element-options').forEach(el => {
         el.classList.add('hidden');
     });
 
-    // Show selected element options
     const optionsEl = document.getElementById(`${selectedElement}-options`);
     if (optionsEl) {
         optionsEl.classList.remove('hidden');
-
-        // Select first option
         const firstBtn = optionsEl.querySelector('.material-btn, .color-btn');
         if (firstBtn) {
             firstBtn.click();
@@ -620,9 +608,7 @@ async function generateRenovation() {
     const renovationResult = document.getElementById('renovation-result');
     const renovationLoading = document.getElementById('renovation-loading');
     const renovationImageContainer = document.getElementById('renovation-image-container');
-    const renovationImage = document.getElementById('renovation-image');
 
-    // Show loading
     renovationResult.classList.remove('hidden');
     renovationLoading.classList.remove('hidden');
     renovationImageContainer.classList.add('hidden');
@@ -641,8 +627,6 @@ async function generateRenovation() {
         });
 
         const result = await response.json();
-
-        // Poll for completion
         await pollRenovationStatus(result.job_id);
     } catch (error) {
         console.error('Renovation error:', error);
@@ -668,7 +652,6 @@ async function pollRenovationStatus(jobId) {
                 renovationImageContainer.classList.remove('hidden');
                 renovationImage.src = result.generated_url;
 
-                // Store for comparison
                 document.getElementById('compare-before').src = currentImageUrl;
                 document.getElementById('compare-after').src = result.generated_url;
 
@@ -689,29 +672,279 @@ async function pollRenovationStatus(jobId) {
 }
 
 // ============================================================================
+// HISTORY & PDF
+// ============================================================================
+
+function saveToHistory() {
+    const renovationImage = document.getElementById('renovation-image');
+    if (!renovationImage.src) return;
+
+    const item = {
+        id: Date.now(),
+        originalUrl: currentImageUrl,
+        generatedUrl: renovationImage.src,
+        element: selectedElement,
+        style: selectedStyle,
+        color: selectedColor,
+        material: selectedMaterial,
+        timestamp: new Date().toISOString()
+    };
+
+    visualizationHistory.push(item);
+    updateHistoryPanel();
+}
+
+function updateHistoryPanel() {
+    const historyPanel = document.getElementById('history-panel');
+    const historyItems = document.getElementById('history-items');
+    const historyCount = document.getElementById('history-count');
+    const generatePdfBtn = document.getElementById('generate-pdf-btn');
+
+    if (visualizationHistory.length > 0) {
+        historyPanel.classList.remove('hidden');
+        historyCount.textContent = visualizationHistory.length;
+        generatePdfBtn.disabled = false;
+
+        historyItems.innerHTML = visualizationHistory.map((item, index) => `
+            <div class="history-item" data-id="${item.id}">
+                <img src="${item.generatedUrl}" alt="Option ${index + 1}">
+                <div class="history-item-info">
+                    <span class="history-item-title">Option ${index + 1}</span>
+                    <span class="history-item-desc">${item.element} - ${item.color || item.material}</span>
+                </div>
+                <button class="history-item-delete" onclick="removeFromHistory(${item.id})">×</button>
+            </div>
+        `).join('');
+    } else {
+        historyPanel.classList.add('hidden');
+        generatePdfBtn.disabled = true;
+    }
+}
+
+function removeFromHistory(id) {
+    visualizationHistory = visualizationHistory.filter(item => item.id !== id);
+    updateHistoryPanel();
+}
+
+function initializePdfModal() {
+    const modal = document.getElementById('pdf-modal');
+    const closeBtn = document.getElementById('modal-close');
+    const cancelBtn = document.getElementById('modal-cancel');
+    const form = document.getElementById('pdf-form');
+    const generateBtn = document.getElementById('generate-pdf-btn');
+
+    if (generateBtn) {
+        generateBtn.addEventListener('click', () => {
+            if (visualizationHistory.length > 0) {
+                modal.classList.remove('hidden');
+            }
+        });
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+    }
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
+    }
+
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.add('hidden');
+    });
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await generateClientPDF();
+            modal.classList.add('hidden');
+        });
+    }
+}
+
+async function generateClientPDF() {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'letter');
+
+    const clientName = document.getElementById('client-name').value;
+    const clientAddress = document.getElementById('client-address').value;
+    const clientPhone = document.getElementById('client-phone').value;
+    const projectType = document.getElementById('client-project').value;
+    const salesRep = document.getElementById('sales-rep').value;
+
+    const now = new Date();
+    const quoteNumber = `P3D-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+
+    const pageWidth = 215.9;
+    const pageHeight = 279.4;
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    let yPos = margin;
+
+    function addHeader() {
+        pdf.setFillColor(26, 54, 93);
+        pdf.rect(0, 0, pageWidth, 35, 'F');
+
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(20);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('HELLO PROJECTS PRO', margin, 18);
+
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('Patagon3d - AI Renovation Visualizer', margin, 28);
+
+        pdf.setTextColor(79, 172, 254);
+        pdf.text('helloprojectspro.com', pageWidth - margin, 28, { align: 'right' });
+
+        return 45;
+    }
+
+    function addFooter(pageNum, totalPages) {
+        pdf.setFillColor(26, 54, 93);
+        pdf.rect(0, pageHeight - 15, pageWidth, 15, 'F');
+
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(8);
+        pdf.text('This document is an AI-generated visualization proposal. Final results may vary.', margin, pageHeight - 7);
+        pdf.text(`Page ${pageNum} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
+    }
+
+    // Page 1 - Cover
+    yPos = addHeader();
+
+    pdf.setTextColor(26, 54, 93);
+    pdf.setFontSize(24);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Renovation Visualization', margin, yPos + 20);
+    pdf.text('Proposal', margin, yPos + 32);
+
+    pdf.setDrawColor(79, 172, 254);
+    pdf.setLineWidth(1);
+    pdf.line(margin, yPos + 40, margin + 60, yPos + 40);
+
+    yPos += 60;
+
+    pdf.setFontSize(12);
+    pdf.setTextColor(60, 60, 60);
+    pdf.setFont('helvetica', 'normal');
+
+    const clientInfo = [
+        ['Client:', clientName],
+        ['Address:', clientAddress],
+        ['Phone:', clientPhone || 'N/A'],
+        ['Project:', projectType],
+        ['Quote #:', quoteNumber],
+        ['Date:', now.toLocaleDateString()],
+        ['Representative:', salesRep]
+    ];
+
+    clientInfo.forEach(([label, value]) => {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(label, margin, yPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(value, margin + 40, yPos);
+        yPos += 8;
+    });
+
+    addFooter(1, visualizationHistory.length + 1);
+
+    // Visualization pages
+    for (let i = 0; i < visualizationHistory.length; i++) {
+        const item = visualizationHistory[i];
+        pdf.addPage();
+        yPos = addHeader();
+
+        pdf.setTextColor(26, 54, 93);
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`Option ${i + 1}: ${item.element.charAt(0).toUpperCase() + item.element.slice(1)}`, margin, yPos);
+
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(`Style: ${item.style} | ${item.color || item.material || ''}`, margin, yPos + 8);
+
+        yPos += 20;
+
+        const imgWidth = (contentWidth - 10) / 2;
+        const imgHeight = 80;
+
+        // Original image
+        pdf.setFontSize(10);
+        pdf.setTextColor(60, 60, 60);
+        pdf.text('ORIGINAL', margin + imgWidth / 2, yPos, { align: 'center' });
+
+        try {
+            const originalBase64 = await loadImageAsBase64(item.originalUrl);
+            pdf.addImage(originalBase64, 'JPEG', margin, yPos + 5, imgWidth, imgHeight);
+        } catch (e) {
+            pdf.setFillColor(240, 240, 240);
+            pdf.rect(margin, yPos + 5, imgWidth, imgHeight, 'F');
+            pdf.text('Image unavailable', margin + imgWidth / 2, yPos + 45, { align: 'center' });
+        }
+
+        // Generated image
+        pdf.text('AI VISUALIZATION', margin + imgWidth + 10 + imgWidth / 2, yPos, { align: 'center' });
+
+        try {
+            const generatedBase64 = await loadImageAsBase64(item.generatedUrl);
+            pdf.addImage(generatedBase64, 'JPEG', margin + imgWidth + 10, yPos + 5, imgWidth, imgHeight);
+        } catch (e) {
+            pdf.setFillColor(240, 240, 240);
+            pdf.rect(margin + imgWidth + 10, yPos + 5, imgWidth, imgHeight, 'F');
+            pdf.text('Image unavailable', margin + imgWidth + 10 + imgWidth / 2, yPos + 45, { align: 'center' });
+        }
+
+        addFooter(i + 2, visualizationHistory.length + 1);
+    }
+
+    // Save
+    const fileName = `Visualization_${clientName.replace(/\s+/g, '_')}_${quoteNumber}.pdf`;
+    pdf.save(fileName);
+
+    alert('PDF generated successfully!');
+}
+
+async function loadImageAsBase64(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = url;
+    });
+}
+
+// ============================================================================
 // NAVIGATION & ACTIONS
 // ============================================================================
 
 function initializeActions() {
-    // Analyze measurements button
     document.getElementById('analyze-btn')?.addEventListener('click', analyzeMeasurements);
 
-    // Skip to renovation button
     document.getElementById('continue-btn')?.addEventListener('click', () => {
         document.getElementById('original-photo').src = currentImageUrl;
         showSection('renovation');
     });
 
-    // Continue to renovation from measurements
     document.getElementById('to-renovation-btn')?.addEventListener('click', () => {
         document.getElementById('original-photo').src = currentImageUrl;
         showSection('renovation');
     });
 
-    // Generate renovation
     document.getElementById('generate-renovation')?.addEventListener('click', generateRenovation);
 
-    // Download button
+    document.getElementById('save-to-history-btn')?.addEventListener('click', saveToHistory);
+
     document.getElementById('download-btn')?.addEventListener('click', () => {
         const renovationImage = document.getElementById('renovation-image');
         const link = document.createElement('a');
@@ -720,30 +953,25 @@ function initializeActions() {
         link.click();
     });
 
-    // Try another renovation
     document.getElementById('new-renovation-btn')?.addEventListener('click', () => {
         document.getElementById('renovation-result').classList.add('hidden');
     });
 
-    // Back to options from comparison
     document.getElementById('back-to-options')?.addEventListener('click', () => {
         showSection('renovation');
     });
 
-    // New photo button
     document.getElementById('new-photo-btn')?.addEventListener('click', () => {
         resetApp();
     });
 }
 
 function showSection(sectionName) {
-    // Hide all sections
     document.querySelectorAll('.section').forEach(s => {
         s.classList.remove('active');
         s.classList.add('hidden');
     });
 
-    // Show selected section
     const section = document.getElementById(`${sectionName}-section`);
     if (section) {
         section.classList.remove('hidden');
@@ -754,22 +982,13 @@ function showSection(sectionName) {
 function resetApp() {
     currentImageUrl = null;
     currentImageId = null;
+    visualizationHistory = [];
 
-    // Reset UI
     document.getElementById('upload-area').classList.remove('hidden');
     document.getElementById('image-preview').classList.add('hidden');
     document.getElementById('upload-progress').classList.add('hidden');
     document.getElementById('image-input').value = '';
 
+    updateHistoryPanel();
     showSection('upload');
-}
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
-function formatFeetInches(totalFeet) {
-    const feet = Math.floor(totalFeet);
-    const inches = Math.round((totalFeet - feet) * 12);
-    return `${feet}' ${inches}"`;
 }
