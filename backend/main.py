@@ -25,6 +25,10 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
+# Google Auth for Vertex AI OAuth2
+from google.oauth2 import service_account
+from google.auth.transport import requests as google_requests
+
 app = FastAPI(title="Patagon3d", description="Real Photo AI Renovation & Measurement System")
 
 # CORS for mobile browser access
@@ -38,8 +42,34 @@ app.add_middleware(
 
 # Google Vertex AI Configuration (Imagen 3.0 for image-to-image)
 GOOGLE_CLOUD_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT_ID", "")
-GOOGLE_CLOUD_API_KEY = os.environ.get("GOOGLE_CLOUD_API_KEY", "")
 GOOGLE_CLOUD_LOCATION = "us-central1"
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+
+# Cached credentials
+_google_credentials = None
+
+def get_vertex_access_token():
+    """Get OAuth2 access token for Vertex AI using service account"""
+    global _google_credentials
+
+    if not GOOGLE_SERVICE_ACCOUNT_JSON:
+        raise Exception("GOOGLE_SERVICE_ACCOUNT_JSON not configured")
+
+    try:
+        if _google_credentials is None:
+            sa_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+            _google_credentials = service_account.Credentials.from_service_account_info(
+                sa_info,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+
+        # Refresh token if needed
+        if not _google_credentials.valid:
+            _google_credentials.refresh(google_requests.Request())
+
+        return _google_credentials.token
+    except Exception as e:
+        raise Exception(f"Failed to get access token: {str(e)}")
 
 # OpenAI Configuration (GPT-4 Vision for measurements)
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
@@ -570,8 +600,8 @@ async def get_measurement_status(job_id: str):
 @app.post("/api/renovate")
 async def generate_renovation(background_tasks: BackgroundTasks, request: RenovationRequest, user: dict = Depends(require_auth)):
     """Generate AI renovation by modifying the REAL uploaded photo"""
-    if not GOOGLE_CLOUD_API_KEY:
-        raise HTTPException(status_code=500, detail="Google Cloud API key not configured")
+    if not GOOGLE_SERVICE_ACCOUNT_JSON:
+        raise HTTPException(status_code=500, detail="Google Service Account not configured")
 
     job_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
@@ -651,11 +681,16 @@ async def process_renovation(
         renovation_jobs[job_id].prompt_used = prompt
 
         async with httpx.AsyncClient(timeout=120.0) as client:
-            imagen_url = f"https://{GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/{GOOGLE_CLOUD_PROJECT_ID}/locations/{GOOGLE_CLOUD_LOCATION}/publishers/google/models/imagen-3.0-capability-001:predict?key={GOOGLE_CLOUD_API_KEY}"
+            # Get OAuth2 access token
+            access_token = get_vertex_access_token()
+            imagen_url = f"https://{GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/{GOOGLE_CLOUD_PROJECT_ID}/locations/{GOOGLE_CLOUD_LOCATION}/publishers/google/models/imagen-3.0-capability-001:predict"
 
             response = await client.post(
                 imagen_url,
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {access_token}"
+                },
                 json={
                     "instances": [
                         {
@@ -754,7 +789,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Patagon3d",
-        "google_imagen_configured": bool(GOOGLE_CLOUD_API_KEY),
+        "google_imagen_configured": bool(GOOGLE_SERVICE_ACCOUNT_JSON),
         "openai_configured": bool(OPENAI_API_KEY),
         "supabase_configured": bool(SUPABASE_URL)
     }
@@ -766,7 +801,7 @@ async def get_config():
     return {
         "features": {
             "measurements": bool(OPENAI_API_KEY),
-            "renovation": bool(GOOGLE_CLOUD_API_KEY),
+            "renovation": bool(GOOGLE_SERVICE_ACCOUNT_JSON),
             "storage": bool(SUPABASE_URL)
         }
     }
