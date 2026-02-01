@@ -25,9 +25,14 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
-# Google Auth for Vertex AI OAuth2
-from google.oauth2 import service_account
-from google.auth.transport import requests as google_requests
+# Google Auth for Vertex AI OAuth2 - wrap in try/except for graceful degradation
+try:
+    from google.oauth2 import service_account
+    from google.auth.transport import requests as google_requests
+    GOOGLE_AUTH_AVAILABLE = True
+except ImportError:
+    GOOGLE_AUTH_AVAILABLE = False
+    print("Warning: google-auth library not available. Vertex AI features will be disabled.")
 
 app = FastAPI(title="Patagon3d", description="Real Photo AI Renovation & Measurement System")
 
@@ -51,6 +56,9 @@ _google_credentials = None
 def get_vertex_access_token():
     """Get OAuth2 access token for Vertex AI using service account"""
     global _google_credentials
+
+    if not GOOGLE_AUTH_AVAILABLE:
+        raise Exception("google-auth library not installed")
 
     if not GOOGLE_SERVICE_ACCOUNT_JSON:
         raise Exception("GOOGLE_SERVICE_ACCOUNT_JSON not configured")
@@ -789,7 +797,9 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Patagon3d",
-        "google_imagen_configured": bool(GOOGLE_SERVICE_ACCOUNT_JSON),
+        "google_auth_library": GOOGLE_AUTH_AVAILABLE,
+        "google_service_account_configured": bool(GOOGLE_SERVICE_ACCOUNT_JSON),
+        "google_project_configured": bool(GOOGLE_CLOUD_PROJECT_ID),
         "openai_configured": bool(OPENAI_API_KEY),
         "supabase_configured": bool(SUPABASE_URL)
     }
